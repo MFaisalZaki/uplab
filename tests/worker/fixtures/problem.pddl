@@ -1,0 +1,5 @@
+(define (problem two-routes)
+  (:domain roads)
+  (:objects a b1 b2 c - location)
+  (:init (at a) (road a b1) (road a b2) (road b1 c) (road b2 c))
+  (:goal (at c)))
