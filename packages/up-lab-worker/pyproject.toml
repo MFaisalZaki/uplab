@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "up-lab-worker"
+version = "0.1.0"
+description = "In-environment runner and plan-set planner mixin for up-lab."
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = ["unified-planning>=1.2"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/up_lab_worker"]
