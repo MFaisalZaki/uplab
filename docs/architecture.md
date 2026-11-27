@@ -25,6 +25,7 @@ schema.
 |---|---|---|---|
 | `up-lab-worker` | `up_lab_worker` | `unified-planning` only (otherwise stdlib) | Installed into every planner environment. Plan-set mixin, in-environment runner, record schema constants. |
 | `up-lab` | `up_lab` | `up-lab-worker`, pydantic, PyYAML, typer, pluggy, submitit, pyoxigraph, pandas, seaborn | Orchestrator and CLI `uplab`. |
+| `up-lab-stats` | `up_lab_stats` | `up-lab`, scipy | Plugin (entry point only, never imported by `up_lab`): planner-comparison analyses, their queries and the `anytime` renderer. Its terms are in `up_lab_stats/vocab.ttl`. |
 
 ## Vocabulary
 
@@ -122,7 +123,7 @@ executor:
     memory_headroom_mb: 1024
     extra: {}                       # passed to sbatch verbatim
 analyses: []                        # [{name: <analysis plugin or path.rq>, options: {}}]
-reports: []                         # [{name, query: builtin:<name> | path.rq, render: <renderer>, options: {}}]
+reports: []                         # [{name, query: builtin:<name> | plugin:<name> | path.rq, render: <renderer>, options: {}}]
 ```
 
 A variant may use the shorthand `engine:` + `params:` instead of a one-step
@@ -368,7 +369,8 @@ timestamped; plans not reported are stamped when the call returns.
 ### Plugins
 
 `pluggy`, project name and entry-point group `up_lab`. Every hook returns a
-`dict` mapping a name to a callable; `up_lab.plugins.hook(name)` merges them.
+`dict` mapping a name to a callable (a text for `uplab_queries`);
+`up_lab.plugins.hook(name)` merges them.
 
 | Hook | Callable |
 |---|---|
@@ -376,9 +378,16 @@ timestamped; plans not reported are stamped when the call returns.
 | `uplab_executors` | `(exp_dir: Path, config: ExperimentConfig) -> None` |
 | `uplab_analyses` | `(store, exp_dir: Path, options: dict) -> Iterable[pyoxigraph.Triple]` |
 | `uplab_renderers` | `(df: DataFrame, stem: Path, options: dict) -> list[Path]` |
+| `uplab_queries` | SPARQL text, keyed by query name |
 | `uplab_log_parsers` | `(stdout: str) -> dict`, keyed by engine name |
 
 An analysis may also be a `.rq` file with a `CONSTRUCT` query: no code.
+
+`analyze` runs the built-in analyses `reference-cost` and `scores` first, then
+the configured ones in the order of `analyses:`; listing a built-in there only
+sets its options. A query reference `builtin:<name>` is looked up among
+up-lab's own `queries/<name>.rq`, then among the `uplab_queries` of plugins;
+`plugin:<name>` only among the latter.
 
 ### Slurm submitter
 
@@ -412,7 +421,10 @@ Oxigraph (pyoxigraph), on disk in `store/`. Namespace
 `prov:Entity` with `prov:wasGeneratedBy`). Named graphs:
 `urn:uplab:graph:<experiment>` for records and
 `urn:uplab:graph:<experiment>:analysis:<name>` per analysis, so an analysis
-can be dropped and recomputed. Per-plan facts are loaded by default.
+can be dropped and recomputed. Queries see the union of the graphs, in which
+a triple stored in two graphs matches twice: an analysis describes only
+resources of its own, or adds properties to those of the records. Per-plan
+facts are loaded by default.
 
 ## Unified Planning style
 

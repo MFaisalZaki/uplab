@@ -2,7 +2,7 @@
 name = "up-lab-workspace"
 version = "0"
 requires-python = ">=3.10"
-dependencies = ["up-lab[notebook,serve]", "up-lab-worker"]
+dependencies = ["up-lab[notebook,serve]", "up-lab-worker", "up-lab-stats"]
 
 [dependency-groups]
 dev = ["pytest>=8", "up-pyperplan", "black", "mypy"]
@@ -16,6 +16,7 @@ members = ["packages/*"]
 [tool.uv.sources]
 up-lab = { workspace = true }
 up-lab-worker = { workspace = true }
+up-lab-stats = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

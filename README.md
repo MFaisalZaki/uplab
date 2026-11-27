@@ -19,7 +19,7 @@ The schemas and module contracts are in
 Requirements: Python >= 3.10, [`uv`](https://docs.astral.sh/uv/) and `git`.
 
 ```sh
-uv sync                                   # installs up-lab and up-lab-worker
+uv sync                                   # installs up-lab, up-lab-worker, up-lab-stats
 uv run uplab all examples/experiment.yaml
 ```
 
@@ -140,6 +140,7 @@ Plugins use [pluggy](https://pluggy.readthedocs.io); the entry-point group is
 | `uplab_executors` | executors |
 | `uplab_analyses` | analyses writing triples into the store |
 | `uplab_renderers` | report renderers |
+| `uplab_queries` | saved queries, used in reports as `builtin:<name>` or `plugin:<name>` |
 | `uplab_log_parsers` | parsers of an engine's output |
 
 ```python
@@ -156,6 +157,56 @@ def uplab_benchmark_layouts():
 [project.entry-points.up_lab]
 mine = "up_mine.uplab_plugin"
 ```
+
+`packages/up-lab-stats` is such a plugin: up-lab never imports it, its
+`pyproject.toml` registers it with
+
+```toml
+[project.entry-points.up_lab]
+stats = "up_lab_stats.plugin"
+```
+
+## Statistics plugin
+
+`up-lab-stats` adds the planner comparisons of the benchmarking literature.
+List the analyses you want under `analyses:` and render their queries (same
+names unless noted) under `reports:`:
+
+```yaml
+analyses:
+  - name: scores                    # built-in; here only to set an option
+    options: {agile_base: 300}      # T of the agile score; default: the time limit (the IPC uses 300)
+  - name: pairwise-tests
+    options: {censor_factor: 1.0}
+  - name: portfolio
+reports:
+  - {name: tests, query: builtin:pairwise-tests, render: csv}
+  - {name: portfolio, query: builtin:portfolio, render: latex}
+  - {name: anytime, query: builtin:anytime-quality, render: anytime}
+```
+
+Variants are compared per request and over tasks. With several seeds, the
+runs of a variant on a task are aggregated first: the task is covered if at
+least half of the runs are, and its CPU time and cost are the means over the
+covered runs. All analyses build on the built-in `reference-cost` and
+`scores`, which always run first.
+
+| Analysis | Computes | Options | Follows |
+|---|---|---|---|
+| `optimality-claims` | `uplab:wrongOptimalityClaim` on every run that claimed optimality: true if its best valid cost exceeds the task's reference cost. Query `wrong-claims` lists them. | | |
+| `pairwise-tests` | For every pair of variants, two-sided tests: sign (binomial) test on coverage over the tasks only one side covers; Wilcoxon signed-rank on CPU time over the tasks at least one side covers, the other side counting as `censor_factor` x time limit; Wilcoxon signed-rank on best cost over the double hits. Sample size, wins of each side, statistic and p-value; no p-value when there is no difference. | `censor_factor` (1.0) | IPC 2011 analysis: Linares López, Jiménez Celorrio & García Olaya, AIJ 2015 (after Gerevini et al., AIJ 2009); `scipy.stats.binomtest`, `scipy.stats.wilcoxon` |
+| `double-hits` | For every pair of variants: the number of tasks both cover and each side's mean CPU time, cost and quality score on these tasks. | | as above |
+| `domain-scores` | Per variant and domain: coverage, domain-normalised coverage (fraction of the domain's tasks covered; overall the mean over domains) and Borda count (in each domain the best of `n` variants by coverage gets `n` points, the worst 1, ties share the mean of their points; summed over domains). | | Vallati, Chrpa & McCluskey, KER 2018 |
+| `portfolio` | Virtual best solver per request (a task is covered if any variant covers it, with the best CPU time and cost); each variant's marginal contribution to its coverage (all variants minus all but this one) and Shapley value for the coverage game, exact up to 10 variants, else estimated from `samples` random orders. | `samples` (2000), `seed` (0) | Fréchette et al., AAAI 2016 |
+| `lab-scores` | Per run `uplab:labTimeScore` and `uplab:labMemoryScore`: `(log v - log U) / (log L - log U)` with `v` clamped to `[L, U]`, 0 if not covered. Time: total CPU time, `L` = 1 s, `U` = time limit. Memory: peak memory, `L` = 2000 KB, `U` = memory limit. Query `lab-scores` sums them per variant and domain. | | Downward Lab (`score_total_time`, `score_memory`) |
+
+The query `anytime-quality` returns every valid plan with the CPU time at
+which it was found, its cost and the reference cost; the renderer `anytime`
+plots from it, per variant, the sum over runs of the IPC quality score of the
+best plan found so far (reference cost / cost, at most 1) as a step function
+of time on a log axis, as PDF and PNG (options `time_limit`, `xscale`,
+`xlabel`, `ylabel`, `title`, `figsize`). The terms the analyses add to the
+vocabulary are in `up_lab_stats/vocab.ttl`.
 
 ## Development
 

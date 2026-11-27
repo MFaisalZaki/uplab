@@ -83,13 +83,14 @@ def scores(
     - `uplab:qualityScore`: IPC satisficing score, reference cost / best
       valid cost (at most 1), 0 if not covered, absent if a cost is unknown.
     - `uplab:agileScore`: IPC-2018 agile score on the CPU time `t` to the
-      first plan with time limit `T`: 1 if `t <= 1`, else `1 - log(t)/log(T)`;
+      first plan with base `T`: 1 if `t <= 1`, else `1 - log(t)/log(T)`;
       0 if not covered.
     - `uplab:par10`: CPU time, or 10 x the time limit if not covered.
 
     :param store: The store.
     :param exp_dir: The experiment directory.
-    :param options: Unused.
+    :param options: `agile_base`: the `T` of the agile score in seconds
+        (default: the time limit of the run; the IPC uses 300).
     :return: The score triples of every run.
     """
     sparql = """
@@ -104,6 +105,7 @@ def scores(
         }"""
     for row in _rows(store, sparql):
         run, limit = row["run"], row["limit"]
+        base = options.get("agile_base") or limit
         covered = row["outcome"] == "SOLVED" or (
             row["outcome"] == "TIMEOUT" and bool(row["valid"])
         )
@@ -120,8 +122,8 @@ def scores(
                 yield triple(run, "qualityScore", min(1.0, quality))
             if time is not None and time <= 1:
                 yield triple(run, "agileScore", 1.0)
-            elif time is not None and limit is not None and limit > 1:
-                agile = 1 - math.log(time) / math.log(limit)
+            elif time is not None and base is not None and base > 1:
+                agile = 1 - math.log(time) / math.log(base)
                 yield triple(run, "agileScore", max(0.0, agile))
         if covered and row["cpu"] is not None:
             yield triple(run, "par10", float(row["cpu"]))
@@ -169,11 +171,12 @@ def _column(df: pd.DataFrame, options: Dict[str, Any], key: str, default: Any) -
     return column
 
 
-def figure(kind: str, df: pd.DataFrame, options: Dict[str, Any]) -> Any:
+def figure(kind: Any, df: pd.DataFrame, options: Dict[str, Any]) -> Any:
     """
-    Draws one of the built-in figures.
+    Draws one of the built-in figures, or a plugin's in the same style.
 
-    :param kind: `cactus`, `scatter`, `bar` or `line`.
+    :param kind: `cactus`, `scatter`, `bar` or `line`, or a function
+        `(ax, df, options) -> None` drawing on the axes.
     :param df: The query result.
     :param options: The options of the renderer of that name.
     :return: The matplotlib figure.
@@ -194,7 +197,7 @@ def figure(kind: str, df: pd.DataFrame, options: Dict[str, Any]) -> Any:
     }
     with sns.axes_style("whitegrid"), plt.rc_context(rc):
         fig, ax = plt.subplots(figsize=options.get("figsize", (6, 4)))
-        _DRAW[kind](ax, df, options)
+        (_DRAW[kind] if isinstance(kind, str) else kind)(ax, df, options)
         sns.despine(fig)
     if options.get("title"):
         ax.set_title(options["title"])
@@ -303,6 +306,14 @@ def uplab_renderers() -> Dict[str, Callable[..., List[Path]]]:
     renderers = {"csv": render_csv, "latex": render_latex}
     renderers.update({kind: _figure_renderer(kind) for kind in _DRAW})
     return renderers
+
+
+@hookimpl
+def uplab_queries() -> Dict[str, str]:
+    """
+    :return: Nothing: the built-in queries are the files of `up_lab/queries`.
+    """
+    return {}
 
 
 @hookimpl

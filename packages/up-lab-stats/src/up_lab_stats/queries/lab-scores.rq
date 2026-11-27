@@ -1,0 +1,16 @@
+# Sums of Downward Lab's time and memory scores per variant and domain, with
+# a TOTAL row per variant (analysis: lab-scores). Runs without a score count
+# as 0.
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?variant ?domain (SUM(COALESCE(?t, 0.0e0)) AS ?time_score)
+       (SUM(COALESCE(?m, 0.0e0)) AS ?memory_score) WHERE {
+  ?run a uplab:Run ;
+       uplab:variant/uplab:name ?variant .
+  OPTIONAL { ?run uplab:labTimeScore ?t }
+  OPTIONAL { ?run uplab:labMemoryScore ?m }
+  { ?run uplab:task/uplab:domain/uplab:name ?domain }
+  UNION
+  { BIND("TOTAL" AS ?domain) }
+}
+GROUP BY ?variant ?domain
+ORDER BY ?variant (?domain = "TOTAL") ?domain

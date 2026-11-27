@@ -1,4 +1,4 @@
-"""Plugin hooks of up-lab; each returns a ``dict`` mapping names to callables."""
+"""Plugin hooks of up-lab; each returns a ``dict`` mapping names to callables (or texts)."""
 
 from typing import Callable, Dict
 
@@ -39,6 +39,14 @@ def uplab_renderers() -> Dict[str, Callable]:  # type: ignore[empty-body]
     """
     :return: renderers ``(df: DataFrame, stem: Path, options: dict) ->
         list[Path]``.
+    """
+
+
+@hookspec
+def uplab_queries() -> Dict[str, str]:  # type: ignore[empty-body]
+    """
+    :return: SPARQL queries by name, usable in reports as ``builtin:<name>``
+        (up-lab's own queries take precedence) or ``plugin:<name>``.
     """
 
 

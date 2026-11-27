@@ -1,0 +1,18 @@
+# One row per pair of variants and measure: sign test on coverage, Wilcoxon
+# signed-rank tests on CPU time and cost (analysis: pairwise-tests).
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?request ?first ?second ?measure ?test ?n ?wins_first ?wins_second ?statistic ?p_value WHERE {
+  ?t a uplab:Test ;
+     uplab:comparison ?c ;
+     uplab:measure ?measure ;
+     uplab:test ?test ;
+     uplab:sampleSize ?n ;
+     uplab:winsFirst ?wins_first ;
+     uplab:winsSecond ?wins_second .
+  ?c uplab:forRequest/uplab:name ?request ;
+     uplab:firstVariant/uplab:name ?first ;
+     uplab:secondVariant/uplab:name ?second .
+  OPTIONAL { ?t uplab:statistic ?statistic }
+  OPTIONAL { ?t uplab:pValue ?p_value }
+}
+ORDER BY ?request ?first ?second ?measure

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "up-lab-stats"
+version = "0.1.0"
+description = "Planner-comparison statistics for up-lab: tests, Borda, portfolios, Lab scores."
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = ["up-lab", "scipy"]
+
+[project.entry-points.up_lab]
+stats = "up_lab_stats.plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/up_lab_stats"]

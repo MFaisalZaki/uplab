@@ -60,18 +60,28 @@ def open_store(exp_dir: Union[str, Path], read_only: bool = False) -> ox.Store:
 
 def load_query(ref: str, exp_dir: Optional[Path] = None) -> str:
     """
-    Returns the text of a query given as `builtin:<name>` or as a `.rq` path.
+    Returns the text of a query given as `builtin:<name>`, `plugin:<name>` or
+    as a `.rq` path. `builtin:` looks among up-lab's own queries first, then
+    among those of the `uplab_queries` hook; `plugin:` only among the latter.
 
     :param ref: The query reference.
     :param exp_dir: The directory relative paths are resolved against.
     :return: The SPARQL text.
     """
-    if ref.startswith("builtin:"):
-        path = Path(__file__).parent / "queries" / f"{ref[len('builtin:'):]}.rq"
-    else:
-        path = Path(ref)
-        if exp_dir is not None and (Path(exp_dir) / ref).exists():
-            path = Path(exp_dir) / ref
+    kind, _, name = ref.partition(":")
+    if kind in ("builtin", "plugin"):
+        from up_lab.plugins import hook
+
+        path = Path(__file__).parent / "queries" / f"{name}.rq"
+        if kind == "builtin" and path.exists():
+            return path.read_text()
+        queries = hook("uplab_queries")
+        if name not in queries:
+            raise UPLabError(f"Query not found: {ref}")
+        return str(queries[name])
+    path = Path(ref)
+    if exp_dir is not None and (Path(exp_dir) / ref).exists():
+        path = Path(exp_dir) / ref
     if not path.exists():
         raise UPLabError(f"Query not found: {ref}")
     return path.read_text()

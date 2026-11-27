@@ -18,6 +18,7 @@ def analyze(
     """
     Runs the built-in analyses, then the configured ones; the triples of each
     replace its named graph `urn:uplab:graph:<experiment>:analysis:<name>`.
+    A built-in listed in `analyses:` still runs first, with the options given.
 
     An analysis whose name ends in `.rq` is a file with a `CONSTRUCT` query
     (its graph is named after the file stem); any other name is a callable

@@ -1,0 +1,15 @@
+# Runs that claimed optimality although a cheaper plan is known
+# (analysis: optimality-claims).
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?run ?variant ?task ?request ?best_cost ?reference_cost ?reference_source WHERE {
+  ?r uplab:wrongOptimalityClaim true ;
+     uplab:name ?run ;
+     uplab:variant/uplab:name ?variant ;
+     uplab:request/uplab:name ?request ;
+     uplab:bestCost ?best_cost ;
+     uplab:task ?t .
+  ?t uplab:name ?task ;
+     uplab:effectiveReferenceCost ?reference_cost ;
+     uplab:referenceCostSource ?reference_source .
+}
+ORDER BY ?variant ?task ?request ?run

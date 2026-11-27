@@ -20,6 +20,7 @@ resolution-markers = [
 [manifest]
 members = [
     "up-lab",
+    "up-lab-stats",
     "up-lab-worker",
     "up-lab-workspace",
 ]
@@ -3715,6 +3716,23 @@ requires-dist = [
 provides-extras = ["notebook", "serve"]
 
 [[package]]
+name = "up-lab-stats"
+version = "0.1.0"
+source = { editable = "packages/up-lab-stats" }
+dependencies = [
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "up-lab" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "scipy" },
+    { name = "up-lab", editable = "packages/up-lab" },
+]
+
+[[package]]
 name = "up-lab-worker"
 version = "0.1.0"
 source = { editable = "packages/up-lab-worker" }
@@ -3731,6 +3749,7 @@ version = "0"
 source = { virtual = "." }
 dependencies = [
     { name = "up-lab", extra = ["notebook", "serve"] },
+    { name = "up-lab-stats" },
     { name = "up-lab-worker" },
 ]
 
@@ -3745,6 +3764,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "up-lab", extras = ["notebook", "serve"], editable = "packages/up-lab" },
+    { name = "up-lab-stats", editable = "packages/up-lab-stats" },
     { name = "up-lab-worker", editable = "packages/up-lab-worker" },
 ]
 

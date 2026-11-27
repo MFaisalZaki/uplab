@@ -1,0 +1,69 @@
+@prefix uplab: <urn:uplab:ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Terms added by up-lab-stats to the up-lab vocabulary (see up_lab/vocab/uplab.ttl).
+# Each analysis writes into urn:uplab:graph:<experiment>:analysis:<name>.
+
+# optimality-claims, lab-scores: properties of runs
+
+uplab:wrongOptimalityClaim a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:boolean ;
+    rdfs:comment "On runs with uplab:claimedOptimal true and a valid plan: the best valid cost exceeds the effective reference cost of the task." .
+uplab:labTimeScore a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ;
+    rdfs:comment "Downward Lab's log-scaled score of the total CPU time between 1 s and the time limit; 0 if not covered." .
+uplab:labMemoryScore a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ;
+    rdfs:comment "Downward Lab's log-scaled score of the peak memory between 2000 KB and the memory limit; 0 if not covered." .
+
+# Classes
+
+uplab:Comparison a owl:Class ; rdfs:comment "pairwise-tests: an unordered pair of variants of a request, first < second by name. IRI urn:uplab:comparison:<experiment>:<request>:<first>:<second>." .
+uplab:Test a owl:Class ; rdfs:comment "pairwise-tests: a two-sided paired test of one measure for a comparison." .
+uplab:DoubleHits a owl:Class ; rdfs:comment "double-hits: a pair of variants of a request compared on the tasks both cover." .
+uplab:DomainScore a owl:Class ; rdfs:comment "domain-scores: the coverage scores of a variant in a domain (or overall) for a request." .
+uplab:VirtualBestSolver a owl:Class ; rdfs:comment "portfolio: the virtual best solver of the variants of a request." .
+uplab:VirtualBestResult a owl:Class ; rdfs:comment "portfolio: the best result of any variant on a task covered by the virtual best solver." .
+uplab:PortfolioContribution a owl:Class ; rdfs:comment "portfolio: what a variant contributes to the coverage of the virtual best solver." .
+
+# Links
+
+uplab:forRequest a owl:ObjectProperty ; rdfs:range uplab:Request .
+uplab:forVariant a owl:ObjectProperty ; rdfs:range uplab:Variant .
+uplab:forTask a owl:ObjectProperty ; rdfs:domain uplab:VirtualBestResult ; rdfs:range uplab:Task .
+uplab:firstVariant a owl:ObjectProperty ; rdfs:range uplab:Variant .
+uplab:secondVariant a owl:ObjectProperty ; rdfs:range uplab:Variant .
+uplab:comparison a owl:ObjectProperty ; rdfs:domain uplab:Test ; rdfs:range uplab:Comparison .
+
+# Test
+
+uplab:measure a owl:DatatypeProperty ; rdfs:domain uplab:Test ; rdfs:range xsd:string ; rdfs:comment "coverage, cpu-time or cost." .
+uplab:test a owl:DatatypeProperty ; rdfs:domain uplab:Test ; rdfs:range xsd:string ; rdfs:comment "sign (binomial test on the tasks only one side covers) or wilcoxon (signed-rank)." .
+uplab:sampleSize a owl:DatatypeProperty ; rdfs:domain uplab:Test ; rdfs:range xsd:integer ; rdfs:comment "Tasks entering the test, ties included." .
+uplab:winsFirst a owl:DatatypeProperty ; rdfs:domain uplab:Test ; rdfs:range xsd:integer ; rdfs:comment "Tasks where the first variant is better (covered, faster, cheaper)." .
+uplab:winsSecond a owl:DatatypeProperty ; rdfs:domain uplab:Test ; rdfs:range xsd:integer .
+uplab:statistic a owl:DatatypeProperty ; rdfs:domain uplab:Test ; rdfs:range xsd:double ; rdfs:comment "sign: wins of the first variant; wilcoxon: the statistic of scipy.stats.wilcoxon. Absent when there is no difference." .
+uplab:pValue a owl:DatatypeProperty ; rdfs:domain uplab:Test ; rdfs:range xsd:double ; rdfs:comment "Two-sided; absent when there is no difference." .
+
+# DoubleHits (each mean also with the suffix Second)
+
+uplab:doubleHits a owl:DatatypeProperty ; rdfs:domain uplab:DoubleHits ; rdfs:range xsd:integer ; rdfs:comment "Tasks both variants cover." .
+uplab:meanCpuTimeFirst a owl:DatatypeProperty ; rdfs:domain uplab:DoubleHits ; rdfs:range xsd:double .
+uplab:meanCpuTimeSecond a owl:DatatypeProperty ; rdfs:domain uplab:DoubleHits ; rdfs:range xsd:double .
+uplab:meanCostFirst a owl:DatatypeProperty ; rdfs:domain uplab:DoubleHits ; rdfs:range xsd:double .
+uplab:meanCostSecond a owl:DatatypeProperty ; rdfs:domain uplab:DoubleHits ; rdfs:range xsd:double .
+uplab:meanQualityScoreFirst a owl:DatatypeProperty ; rdfs:domain uplab:DoubleHits ; rdfs:range xsd:double .
+uplab:meanQualityScoreSecond a owl:DatatypeProperty ; rdfs:domain uplab:DoubleHits ; rdfs:range xsd:double .
+
+# DomainScore, VirtualBestSolver, PortfolioContribution
+
+uplab:domainName a owl:DatatypeProperty ; rdfs:domain uplab:DomainScore ; rdfs:range xsd:string ; rdfs:comment "The name of the domain, or TOTAL." .
+uplab:coveredTasks a owl:DatatypeProperty ; rdfs:range xsd:integer ; rdfs:comment "Tasks covered: at least half of the runs (seeds) are." .
+uplab:tasks a owl:DatatypeProperty ; rdfs:range xsd:integer ; rdfs:comment "Tasks of the request (in the domain)." .
+uplab:normalisedCoverage a owl:DatatypeProperty ; rdfs:domain uplab:DomainScore ; rdfs:range xsd:double ; rdfs:comment "Fraction of the tasks of the domain covered; TOTAL: mean over the domains." .
+uplab:bordaCount a owl:DatatypeProperty ; rdfs:domain uplab:DomainScore ; rdfs:range xsd:double ; rdfs:comment "Points of the coverage ranking in the domain, n for the best of n variants, ties sharing the mean; TOTAL: sum over the domains." .
+uplab:meanCpuTime a owl:DatatypeProperty ; rdfs:domain uplab:VirtualBestSolver ; rdfs:range xsd:double ; rdfs:comment "Over the covered tasks." .
+uplab:vbsCpuTime a owl:DatatypeProperty ; rdfs:domain uplab:VirtualBestResult ; rdfs:range xsd:double ; rdfs:comment "Lowest CPU time of a covering variant." .
+uplab:vbsCost a owl:DatatypeProperty ; rdfs:domain uplab:VirtualBestResult ; rdfs:range xsd:double ; rdfs:comment "Lowest cost of a covering variant." .
+uplab:marginalContribution a owl:DatatypeProperty ; rdfs:domain uplab:PortfolioContribution ; rdfs:range xsd:integer ; rdfs:comment "VBS coverage minus the VBS coverage without the variant." .
+uplab:shapleyValue a owl:DatatypeProperty ; rdfs:domain uplab:PortfolioContribution ; rdfs:range xsd:double ; rdfs:comment "Shapley value of the variant in the VBS-coverage game." .
+uplab:shapleyExact a owl:DatatypeProperty ; rdfs:domain uplab:PortfolioContribution ; rdfs:range xsd:boolean ; rdfs:comment "False when estimated by sampling orders." .

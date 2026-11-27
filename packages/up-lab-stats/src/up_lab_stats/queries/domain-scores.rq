@@ -1,0 +1,14 @@
+# Coverage, domain-normalised coverage and Borda count per variant and
+# domain, with a TOTAL row per variant (analysis: domain-scores).
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?request ?variant ?domain ?coverage ?tasks ?normalised_coverage ?borda WHERE {
+  ?s a uplab:DomainScore ;
+     uplab:forRequest/uplab:name ?request ;
+     uplab:forVariant/uplab:name ?variant ;
+     uplab:domainName ?domain ;
+     uplab:coveredTasks ?coverage ;
+     uplab:tasks ?tasks ;
+     uplab:normalisedCoverage ?normalised_coverage ;
+     uplab:bordaCount ?borda .
+}
+ORDER BY ?request ?variant (?domain = "TOTAL") ?domain

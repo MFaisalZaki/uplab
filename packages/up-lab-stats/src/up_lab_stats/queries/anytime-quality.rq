@@ -1,0 +1,18 @@
+# One row per valid plan: when it was found, its cost and the reference cost
+# of its task; the input of the anytime renderer.
+PREFIX uplab: <urn:uplab:ns#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?variant ?task ?request ?run ?cpu_time ?cost ?reference_cost WHERE {
+  ?plan a uplab:Plan ;
+        prov:wasGeneratedBy ?r ;
+        uplab:valid true ;
+        uplab:foundCpuTime ?cpu_time ;
+        uplab:cost ?cost .
+  ?r uplab:name ?run ;
+     uplab:variant/uplab:name ?variant ;
+     uplab:request/uplab:name ?request ;
+     uplab:task ?t .
+  ?t uplab:name ?task ;
+     uplab:effectiveReferenceCost ?reference_cost .
+}
+ORDER BY ?variant ?task ?request ?run ?cpu_time

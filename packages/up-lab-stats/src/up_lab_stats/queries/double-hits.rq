@@ -1,0 +1,15 @@
+# Per pair of variants: the tasks both cover, and each side's mean CPU time,
+# cost and quality score on these tasks (analysis: double-hits).
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?request ?first ?second ?double_hits ?cpu_time_first ?cpu_time_second
+       ?cost_first ?cost_second ?quality_first ?quality_second WHERE {
+  ?c a uplab:DoubleHits ;
+     uplab:doubleHits ?double_hits ;
+     uplab:forRequest/uplab:name ?request ;
+     uplab:firstVariant/uplab:name ?first ;
+     uplab:secondVariant/uplab:name ?second .
+  OPTIONAL { ?c uplab:meanCpuTimeFirst ?cpu_time_first ; uplab:meanCpuTimeSecond ?cpu_time_second }
+  OPTIONAL { ?c uplab:meanCostFirst ?cost_first ; uplab:meanCostSecond ?cost_second }
+  OPTIONAL { ?c uplab:meanQualityScoreFirst ?quality_first ; uplab:meanQualityScoreSecond ?quality_second }
+}
+ORDER BY ?request ?first ?second

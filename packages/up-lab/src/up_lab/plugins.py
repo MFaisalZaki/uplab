@@ -52,15 +52,16 @@ def manager() -> pluggy.PluginManager:
     return pm
 
 
-def hook(name: str) -> Dict[str, Callable]:
+def hook(name: str) -> Dict[str, Any]:
     """
     Merges what every plugin returns for a hook; plugins registered later
     (installed ones) override built-ins of the same name.
 
     :param name: a hook name, e.g. ``uplab_executors``.
-    :return: the merged mapping from names to callables.
+    :return: the merged mapping from names to callables (query texts for
+        ``uplab_queries``).
     """
-    merged: Dict[str, Callable] = {}
+    merged: Dict[str, Any] = {}
     # pluggy returns results last-registered first.
     for result in reversed(getattr(manager().hook, name)()):
         merged.update(result or {})
