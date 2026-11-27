@@ -1,0 +1,20 @@
+# A tiny experiment: pyperplan on two domains with two problems each.
+#   uplab all examples/experiment.yaml
+name: demo
+benchmarks:
+  - name: tiny
+    source: benchmarks            # local path, relative to this file
+planners:
+  - name: pyperplan
+    source: [up-pyperplan]
+variants:
+  - name: pyperplan
+    planner: pyperplan
+    engine: pyperplan             # shorthand for a one-step pipeline
+requests:
+  - name: sat
+    mode: oneshot
+limits: {time: 60, memory_mb: 2048, cores: 1}
+executor:
+  kind: local
+  workers: 2

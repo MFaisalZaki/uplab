@@ -196,3 +196,6 @@ benchmark-run/
 
 *.sas*
 *.cProfile
+
+# up-lab experiment directories
+experiments/
