@@ -115,7 +115,9 @@ executor:
     array_parallelism: 100          # %N
     max_array_size: null            # null = ask scontrol, fall back to 1000
     max_queued: null                # optional cap on queued array elements
-    dependency: afterany            # afterany | afterok | none
+    max_submissions: 2              # give up on a run after this many submissions without a result
+    poll_interval: 60               # seconds between the controller's checks
+    controller_time: 1440           # minutes; the controller resubmits itself before this
     time_headroom: 600              # seconds added to the Slurm limit
     memory_headroom_mb: 1024
     extra: {}                       # passed to sbatch verbatim
@@ -380,18 +382,24 @@ An analysis may also be a `.rq` file with a `CONSTRUCT` query: no code.
 
 ### Slurm submitter
 
-`uplab run` with `executor.kind: slurm`:
+`uplab run` with `executor.kind: slurm` queues one small **controller job**
+and returns. The arrays do not depend on each other; Slurm schedules them
+freely. The controller:
 
-1. Read `slurm/ledger.json`; pending = runs without `result.json` that are
-   not in a live job.
-2. Submit job arrays through submitit, **one run per array index**, sized to
-   `max_array_size`, throttled with `array_parallelism`; every array depends
-   on the previous one (`dependency`).
-3. Stop when everything is queued, `max_queued` is reached or `sbatch`
-   refuses; update the ledger after each accepted array.
-4. If runs remain, queue a continuation job that depends on the last array
-   and runs `uplab run` again. When nothing remains, the continuation runs
-   `uplab collect`.
+1. Reads `slurm/ledger.json` and `squeue`; pending = runs without
+   `result.json` that are not in a live array.
+2. Submits job arrays through submitit, **one run per array index**, sized to
+   `max_array_size` and throttled with `array_parallelism`, until everything
+   is queued, `max_queued` is reached or `sbatch` refuses. The ledger is
+   updated after each accepted array.
+3. Sleeps `poll_interval` seconds and repeats, refilling the queue as slots
+   free up. A run whose job ended without a result is submitted again, at
+   most `max_submissions` times in total.
+4. When no run is queued or left to submit, runs `collect` and ends.
+5. Shortly before `controller_time`, queues a new controller and ends.
+
+`UPLAB_SLURM_CONTROLLER=1 uplab run <exp-dir>` runs the same loop in the
+foreground, for clusters where a job may not call `sbatch`.
 
 Each array element executes its run's `run.sh`. The Slurm limits are the run
 limits plus headroom so the worker's own limits fire first.

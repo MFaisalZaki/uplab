@@ -9,7 +9,7 @@ about every run, and turns the records into tables and figures.
 - Every run is a directory of plain files; the RDF store, tables and figures
   are derived from them and can be rebuilt.
 - Plan validity and cost are recomputed outside the planner's process.
-- Runs execute on a local process pool or on Slurm, as chained job arrays.
+- Runs execute on a local process pool or on Slurm, as job arrays submitted by a controller job.
 
 The schemas and module contracts are in
 [docs/architecture.md](docs/architecture.md).
@@ -115,12 +115,19 @@ executor:
   slurm: {partition: cpu, array_parallelism: 100}
 ```
 
-`uplab run` submits job arrays with one run per array index, each array
-depending on the previous one, until everything is queued or the scheduler
-refuses. It records what was accepted in `slurm/ledger.json` and queues a
-continuation job that calls `uplab run` again, and `uplab collect` once
-nothing remains. If the continuation job cannot be queued, `uplab run` says
-so; run it again later.
+`uplab run` queues one small controller job and returns. The controller
+submits job arrays with one run per array index until everything is queued
+or the scheduler refuses, records what was accepted in `slurm/ledger.json`,
+and refills the queue as slots free up. When every run has ended it runs
+`uplab collect`. Before its own time limit (`controller_time`, minutes) it
+queues a new controller.
+
+If your cluster does not let a job call `sbatch`, run the controller
+yourself, for example in `tmux` on the login node:
+
+```bash
+UPLAB_SLURM_CONTROLLER=1 uplab run <exp-dir>
+```
 
 ## Plugins
 

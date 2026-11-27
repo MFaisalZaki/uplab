@@ -15,7 +15,7 @@ def test_defaults_and_shorthand(bench: Path) -> None:
     assert config.seeds == [0]
     assert config.limits.model_dump() == {"time": 300, "memory_mb": 4096, "cores": 1}
     assert config.executor.kind == "local"
-    assert config.executor.slurm.dependency == "afterany"
+    assert config.executor.slurm.max_submissions == 2
     assert config.requests[0].mode == "oneshot" and config.requests[0].k == 1
 
 

@@ -1,4 +1,7 @@
-"""Slurm submitter: chained job arrays, one run per array index."""
+"""
+Slurm submitter: a controller job submits job arrays, one run per array
+index, and refills the queue until every run has a result.
+"""
 
 import json
 import math
@@ -6,9 +9,11 @@ import os
 import re
 import subprocess
 import sys
+import time
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set, Tuple
 
 import submitit
 from submitit.core.utils import FailedJobError
@@ -17,6 +22,7 @@ from up_lab.build import pending
 from up_lab.config import ExperimentConfig, UPLabError
 
 DEFAULT_MAX_ARRAY_SIZE = 1000
+CONTROLLER_ENV = "UPLAB_SLURM_CONTROLLER"
 
 
 def max_array_size() -> int:
@@ -54,13 +60,13 @@ def read_ledger(exp_dir: Path) -> Dict[str, Any]:
     """
     :param exp_dir: the experiment directory.
     :return: ``slurm/ledger.json``: the accepted ``arrays`` (``job_id``,
-        ``run_ids``, ``submitted_at``) and the last ``continuation`` job.
+        ``run_ids``, ``submitted_at``) and the last ``controller`` job.
     """
     path = exp_dir / "slurm" / "ledger.json"
     if path.exists():
         ledger: Dict[str, Any] = json.loads(path.read_text())
         return ledger
-    return {"arrays": [], "continuation": None}
+    return {"arrays": [], "controller": None}
 
 
 def _write_ledger(exp_dir: Path, ledger: Dict[str, Any]) -> None:
@@ -75,7 +81,7 @@ def _now() -> str:
 
 
 def _executor(
-    exp_dir: Path, config: ExperimentConfig, dependency: Optional[str], **more: Any
+    exp_dir: Path, config: ExperimentConfig, **more: Any
 ) -> submitit.SlurmExecutor:
     slurm = config.executor.slurm
     executor = submitit.SlurmExecutor(folder=exp_dir / "slurm" / "submitit")
@@ -84,7 +90,6 @@ def _executor(
         "partition": slurm.partition,
         "qos": slurm.qos,
         "account": slurm.account,
-        "dependency": dependency,
         "additional_parameters": slurm.extra or None,
         **more,
     }
@@ -92,38 +97,37 @@ def _executor(
     return executor
 
 
-def run_slurm(exp_dir: Path, config: ExperimentConfig) -> None:
+def _submit_arrays(
+    exp_dir: Path, config: ExperimentConfig, ledger: Dict[str, Any], live: Set[str]
+) -> Tuple[int, List[str], List[str]]:
     """
-    Queues the pending runs as chained job arrays, then a continuation job
-    that calls ``uplab run`` again (``uplab collect`` once all is queued).
+    Submits job arrays of pending runs until all are queued, `max_queued` is
+    reached or `sbatch` refuses.
 
     :param exp_dir: the experiment directory.
     :param config: the experiment.
+    :param ledger: the ledger, updated and written after each accepted array.
+    :param live: ids of the jobs `squeue` lists.
+    :return: the number of queued runs, the runs still to submit, and the
+        runs given up on (submitted `max_submissions` times, never a result).
     """
-    exp_dir = exp_dir.resolve()
     slurm, limits = config.executor.slurm, config.limits
-    (exp_dir / "slurm").mkdir(parents=True, exist_ok=True)
-    ledger = read_ledger(exp_dir)
-    live = live_jobs()
-    live_arrays = [a for a in ledger["arrays"] if a["job_id"] in live]
-    in_live = {run_id for a in live_arrays for run_id in a["run_ids"]}
+    in_live = {r for a in ledger["arrays"] if a["job_id"] in live for r in a["run_ids"]}
+    attempts = Counter(r for a in ledger["arrays"] for r in a["run_ids"])
     unfinished = pending(exp_dir)
-    todo = [run_id for run_id in unfinished if run_id not in in_live]
+    waiting = [r for r in unfinished if r not in in_live]
+    todo = [r for r in waiting if attempts[r] < slurm.max_submissions]
+    lost = [r for r in waiting if attempts[r] >= slurm.max_submissions]
     queued = len(in_live.intersection(unfinished))
-    last: Optional[str] = live_arrays[-1]["job_id"] if live_arrays else None
     size = slurm.max_array_size or max_array_size()
-    submitted = 0
     while todo:
         room = size if slurm.max_queued is None else slurm.max_queued - queued
         chunk = todo[: min(size, room)]
         if not chunk:
-            print(f"max_queued={slurm.max_queued} reached")
             break
-        chained = last is not None and slurm.dependency != "none"
         executor = _executor(
             exp_dir,
             config,
-            f"{slurm.dependency}:{last}" if chained else None,
             time=math.ceil((limits.time + slurm.time_headroom) / 60),
             mem=f"{limits.memory_mb + slurm.memory_headroom_mb}M",
             cpus_per_task=limits.cores,
@@ -137,41 +141,107 @@ def run_slurm(exp_dir: Path, config: ExperimentConfig) -> None:
         except FailedJobError as error:
             print(f"sbatch refused an array of {len(chunk)} runs: {error}")
             break
-        last = jobs[0].job_id.split("_")[0]
         ledger["arrays"].append(
-            {"job_id": last, "run_ids": chunk, "submitted_at": _now()}
+            {
+                "job_id": jobs[0].job_id.split("_")[0],
+                "run_ids": chunk,
+                "submitted_at": _now(),
+            }
         )
         _write_ledger(exp_dir, ledger)
         todo = todo[len(chunk) :]
         queued += len(chunk)
-        submitted += len(chunk)
-    print(f"{submitted} runs submitted, {queued} queued, {len(todo)} not yet queued")
-    if not submitted and not todo:
-        return
-    previous = ledger.get("continuation")
-    if previous in live and previous != os.environ.get("SLURM_JOB_ID"):
-        print(f"continuation job {previous} is already queued")
-        return
-    command = "run" if todo else "collect"
+    return queued, todo, lost
+
+
+def _submit_controller(exp_dir: Path, config: ExperimentConfig) -> bool:
+    """
+    Queues the controller job: `uplab run` with `UPLAB_SLURM_CONTROLLER` set.
+
+    :param exp_dir: the experiment directory.
+    :param config: the experiment.
+    :return: whether `sbatch` accepted it.
+    """
     try:
-        if last is None:
-            raise FailedJobError("no accepted job array to depend on")
         # No srun: a job step cannot submit jobs on every cluster.
         executor = _executor(
-            exp_dir, config, f"afterany:{last}", time=60, use_srun=False
+            exp_dir, config, time=config.executor.slurm.controller_time, use_srun=False
         )
+        command = ["env", f"{CONTROLLER_ENV}=1", sys.executable, "-m", "up_lab.cli"]
         job = executor.submit(
-            submitit.helpers.CommandFunction(
-                [sys.executable, "-m", "up_lab.cli", command, str(exp_dir)]
-            )
+            submitit.helpers.CommandFunction([*command, "run", str(exp_dir)])
         )
     except FailedJobError as error:
         print(
-            f"Could not queue the continuation job ({error}).\n"
-            f"Re-run 'uplab {command} {exp_dir}' yourself"
-            + (" once the queue has room." if todo else " once the jobs have ended.")
+            f"Could not queue the controller job ({error}).\n"
+            f"Run it yourself, e.g. in tmux on the login node:\n"
+            f"  {CONTROLLER_ENV}=1 uplab run {exp_dir}"
         )
-        return
-    ledger["continuation"] = job.job_id
+        return False
+    ledger = read_ledger(exp_dir)
+    ledger["controller"] = job.job_id
     _write_ledger(exp_dir, ledger)
-    print(f"continuation job {job.job_id} will run 'uplab {command}'")
+    print(f"controller job {job.job_id} submits the runs and then collects")
+    return True
+
+
+def control(exp_dir: Path, config: ExperimentConfig) -> None:
+    """
+    The controller loop: submit arrays, wait, refill; collect when no run is
+    queued or left to submit. Inside a Slurm job it resubmits itself shortly
+    before its own time limit.
+
+    :param exp_dir: the experiment directory.
+    :param config: the experiment.
+    """
+    slurm = config.executor.slurm
+    budget = slurm.controller_time * 60
+    margin = min(max(300, 2 * slurm.poll_interval), budget / 2)
+    in_job = "SLURM_JOB_ID" in os.environ
+    deadline = time.monotonic() + budget - margin
+    while True:
+        try:
+            live = live_jobs()
+        except UPLabError as error:
+            print(f"{error}; trying again")
+            time.sleep(slurm.poll_interval)
+            continue
+        queued, todo, lost = _submit_arrays(exp_dir, config, read_ledger(exp_dir), live)
+        print(f"{_now()} {queued} runs queued, {len(todo)} not yet queued", flush=True)
+        if not queued and not todo:
+            if lost:
+                print(
+                    f"{len(lost)} runs left no result after "
+                    f"{slurm.max_submissions} submissions: {' '.join(lost)}"
+                )
+            from up_lab.collect import collect
+
+            collect(exp_dir)
+            return
+        if in_job and time.monotonic() >= deadline:
+            _submit_controller(exp_dir, config)
+            return
+        time.sleep(slurm.poll_interval)
+
+
+def run_slurm(exp_dir: Path, config: ExperimentConfig) -> None:
+    """
+    Queues the controller job, a small Slurm job that submits the pending
+    runs as job arrays and keeps the queue filled. With the environment
+    variable `UPLAB_SLURM_CONTROLLER` set, this call is the controller.
+
+    :param exp_dir: the experiment directory.
+    :param config: the experiment.
+    """
+    exp_dir = exp_dir.resolve()
+    (exp_dir / "slurm").mkdir(parents=True, exist_ok=True)
+    if os.environ.get(CONTROLLER_ENV):
+        control(exp_dir, config)
+        return
+    controller = read_ledger(exp_dir).get("controller")
+    if controller in live_jobs():
+        print(f"controller job {controller} is already queued")
+    elif not pending(exp_dir):
+        print("every run has a result")
+    else:
+        _submit_controller(exp_dir, config)

@@ -108,7 +108,9 @@ class SlurmConfig(_Model):
     array_parallelism: int = Field(default=100, ge=1)
     max_array_size: Optional[int] = Field(default=None, ge=1)
     max_queued: Optional[int] = Field(default=None, ge=1)
-    dependency: Literal["afterany", "afterok", "none"] = "afterany"
+    max_submissions: int = Field(default=2, ge=1)
+    poll_interval: int = Field(default=60, ge=1)
+    controller_time: int = Field(default=1440, ge=1)
     time_headroom: int = Field(default=600, ge=0)
     memory_headroom_mb: int = Field(default=1024, ge=0)
     extra: Dict[str, Any] = {}
