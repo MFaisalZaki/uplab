@@ -1,0 +1,12 @@
+# Solved runs per variant and domain, with a TOTAL row per variant.
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?variant ?domain (SUM(?covered) AS ?solved) (COUNT(?run) AS ?runs) WHERE {
+  ?run a uplab:Run ;
+       uplab:variant/uplab:name ?variant ;
+       uplab:coverage ?covered .
+  { ?run uplab:task/uplab:domain/uplab:name ?domain }
+  UNION
+  { BIND("TOTAL" AS ?domain) }
+}
+GROUP BY ?variant ?domain
+ORDER BY ?variant (?domain = "TOTAL") ?domain

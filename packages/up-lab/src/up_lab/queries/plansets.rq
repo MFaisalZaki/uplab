@@ -1,0 +1,17 @@
+# Plan sets: what was asked and what was returned, per run.
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?run ?variant ?task ?request ?k ?outcome ?returned ?valid ?distinct_valid ?best_cost WHERE {
+  ?r a uplab:Run ;
+     uplab:name ?run ;
+     uplab:variant/uplab:name ?variant ;
+     uplab:task/uplab:name ?task ;
+     uplab:request/uplab:name ?request ;
+     uplab:outcome ?outcome ;
+     uplab:plansValid ?valid ;
+     uplab:plansDistinctValid ?distinct_valid .
+  ?r uplab:plansInvalid ?invalid ; uplab:plansUnvalidated ?unvalidated .
+  BIND(?valid + ?invalid + ?unvalidated AS ?returned)
+  OPTIONAL { ?r uplab:k ?k }
+  OPTIONAL { ?r uplab:bestCost ?best_cost }
+}
+ORDER BY ?variant ?task ?request ?run

@@ -1,0 +1,5 @@
+(define (problem q1)
+  (:domain plain)
+  (:objects a b c - loc)
+  (:init (at a) (road a b) (road b c))
+  (:goal (at c)))

@@ -1,0 +1,16 @@
+# Sums of the IPC quality and agile scores per variant and domain, with a
+# TOTAL row per variant. Runs without a score (unknown cost) count as 0.
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?variant ?domain (SUM(?covered) AS ?coverage)
+       (SUM(COALESCE(?q, 0.0e0)) AS ?quality) (SUM(COALESCE(?a, 0.0e0)) AS ?agile) WHERE {
+  ?run a uplab:Run ;
+       uplab:variant/uplab:name ?variant ;
+       uplab:coverage ?covered .
+  OPTIONAL { ?run uplab:qualityScore ?q }
+  OPTIONAL { ?run uplab:agileScore ?a }
+  { ?run uplab:task/uplab:domain/uplab:name ?domain }
+  UNION
+  { BIND("TOTAL" AS ?domain) }
+}
+GROUP BY ?variant ?domain
+ORDER BY ?variant (?domain = "TOTAL") ?domain

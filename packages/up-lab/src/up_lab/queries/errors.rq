@@ -1,0 +1,15 @@
+# Runs that failed or returned only invalid plans.
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?run ?variant ?task ?request ?seed ?outcome ?exit_code ?error WHERE {
+  ?r a uplab:Run ;
+     uplab:name ?run ;
+     uplab:variant/uplab:name ?variant ;
+     uplab:task/uplab:name ?task ;
+     uplab:request/uplab:name ?request ;
+     uplab:seed ?seed ;
+     uplab:outcome ?outcome .
+  FILTER(?outcome IN ("ERROR", "INVALID"))
+  OPTIONAL { ?r uplab:exitCode ?exit_code }
+  OPTIONAL { ?r uplab:error ?error }
+}
+ORDER BY ?variant ?task ?request ?seed

@@ -1,0 +1,18 @@
+# One row per plan: when it was found and what it costs.
+PREFIX uplab: <urn:uplab:ns#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+SELECT ?run ?variant ?task ?request ?index ?cpu_time ?wall_time ?cost ?valid ?duplicate WHERE {
+  ?plan a uplab:Plan ;
+        prov:wasGeneratedBy ?r ;
+        uplab:index ?index ;
+        uplab:duplicate ?duplicate .
+  ?r uplab:name ?run ;
+     uplab:variant/uplab:name ?variant ;
+     uplab:task/uplab:name ?task ;
+     uplab:request/uplab:name ?request .
+  OPTIONAL { ?plan uplab:foundCpuTime ?cpu_time }
+  OPTIONAL { ?plan uplab:foundWallTime ?wall_time }
+  OPTIONAL { ?plan uplab:cost ?cost }
+  OPTIONAL { ?plan uplab:valid ?valid }
+}
+ORDER BY ?variant ?task ?request ?run ?index

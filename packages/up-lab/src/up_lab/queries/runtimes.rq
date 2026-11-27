@@ -1,0 +1,16 @@
+# One row per run: the input of cactus and scatter plots.
+PREFIX uplab: <urn:uplab:ns#>
+SELECT ?run ?variant ?task ?domain ?request ?seed ?outcome ?cpu_time ?wall_time ?first_plan_cpu_time WHERE {
+  ?r a uplab:Run ;
+     uplab:name ?run ;
+     uplab:variant/uplab:name ?variant ;
+     uplab:task ?t ;
+     uplab:request/uplab:name ?request ;
+     uplab:seed ?seed ;
+     uplab:outcome ?outcome .
+  ?t uplab:name ?task ; uplab:domain/uplab:name ?domain .
+  OPTIONAL { ?r uplab:cpuTime ?cpu_time }
+  OPTIONAL { ?r uplab:wallTime ?wall_time }
+  OPTIONAL { ?r uplab:firstPlanCpuTime ?first_plan_cpu_time }
+}
+ORDER BY ?variant ?task ?request ?seed

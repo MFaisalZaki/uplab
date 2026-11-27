@@ -1,0 +1,164 @@
+@prefix uplab: <urn:uplab:ns#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<urn:uplab:ns> a owl:Ontology ;
+    rdfs:label "up-lab vocabulary" ;
+    rdfs:comment "Records of planner runs collected by up-lab. Records live in the graph urn:uplab:graph:<experiment>, the triples of an analysis in urn:uplab:graph:<experiment>:analysis:<name>." .
+
+# Classes
+
+uplab:Experiment a owl:Class ; rdfs:comment "A set of runs built from one configuration." .
+uplab:Run a owl:Class ; rdfs:subClassOf prov:Activity ;
+    rdfs:comment "One execution: task x variant x request x seed. IRI urn:uplab:run:<experiment>:<run-id>." .
+uplab:Task a owl:Class ; rdfs:comment "One planning problem." .
+uplab:Domain a owl:Class ; rdfs:comment "A group of tasks of a benchmark source." .
+uplab:BenchmarkSource a owl:Class ; rdfs:comment "A pinned repository or directory of tasks." .
+uplab:Planner a owl:Class ; rdfs:comment "Installed distribution(s) exposing UP engines." .
+uplab:Variant a owl:Class ; rdfs:subClassOf prov:SoftwareAgent ;
+    rdfs:comment "A planner with a pipeline of UP engines and their parameters." .
+uplab:Request a owl:Class ; rdfs:comment "What is asked of the planner: mode, k, quality bound, diversity." .
+uplab:Plan a owl:Class ; rdfs:subClassOf prov:Entity ;
+    rdfs:comment "A plan returned by a run, linked to it with prov:wasGeneratedBy." .
+uplab:Metric a owl:Class ; rdfs:comment "A named value reported by the engine or by a log parser." .
+
+# Links
+
+uplab:experiment a owl:ObjectProperty ; rdfs:domain uplab:Run ; rdfs:range uplab:Experiment .
+uplab:task a owl:ObjectProperty ; rdfs:subPropertyOf prov:used ; rdfs:domain uplab:Run ; rdfs:range uplab:Task .
+uplab:variant a owl:ObjectProperty ; rdfs:subPropertyOf prov:wasAssociatedWith ; rdfs:domain uplab:Run ; rdfs:range uplab:Variant .
+uplab:request a owl:ObjectProperty ; rdfs:domain uplab:Run ; rdfs:range uplab:Request .
+uplab:metric a owl:ObjectProperty ; rdfs:domain uplab:Run ; rdfs:range uplab:Metric .
+uplab:domain a owl:ObjectProperty ; rdfs:domain uplab:Task ; rdfs:range uplab:Domain .
+uplab:source a owl:ObjectProperty ; rdfs:domain uplab:Domain ; rdfs:range uplab:BenchmarkSource .
+uplab:planner a owl:ObjectProperty ; rdfs:domain uplab:Variant ; rdfs:range uplab:Planner .
+uplab:duplicateOf a owl:ObjectProperty ; rdfs:domain uplab:Plan ; rdfs:range uplab:Plan ;
+    rdfs:comment "The first identical plan of the same run." .
+
+# Shared
+
+uplab:name a owl:DatatypeProperty ; rdfs:range xsd:string ;
+    rdfs:comment "Name of any resource: run id, task id, domain, variant, request, metric." .
+uplab:k a owl:DatatypeProperty ; rdfs:range xsd:integer ; rdfs:comment "Number of plans asked (Request and Run)." .
+uplab:qualityBound a owl:DatatypeProperty ; rdfs:range xsd:double ;
+    rdfs:comment "Plans may cost up to this factor times the reference cost (Request and Run)." .
+uplab:referenceCost a owl:DatatypeProperty ; rdfs:range xsd:double ;
+    rdfs:comment "Reference cost of the benchmark manifest (Task and Run)." .
+
+# Run: inputs
+
+uplab:seed a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:timeLimit a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "Seconds." .
+uplab:memoryLimitMb a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double .
+uplab:cores a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+
+# Run: outcome
+
+uplab:status a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string ;
+    rdfs:comment "Worker status: SOLVED, UNSOLVABLE, COMPILED, TIMEOUT, MEMOUT, UNSUPPORTED, ERROR." .
+uplab:outcome a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string ;
+    rdfs:comment "The status, or INVALID for a SOLVED run with no valid plan and at least one invalid plan." .
+uplab:upStatus a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string ;
+    rdfs:comment "Name of the PlanGenerationResultStatus." .
+uplab:exitCode a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:signal a owl:DatatypeProperty ; rdfs:domain uplab:Run .
+uplab:error a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string .
+uplab:engineName a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string .
+uplab:plansReturned a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:claimedOptimal a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:boolean .
+uplab:claimedComplete a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:boolean .
+
+# Run: resources (seconds, megabytes). prov:startedAtTime and prov:endedAtTime give the dates.
+
+uplab:wallTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "Whole process tree." .
+uplab:cpuTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "Whole process tree." .
+uplab:peakMemoryMb a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double .
+uplab:parseWallTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double .
+uplab:parseCpuTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double .
+uplab:compileWallTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "Sum over the compiler steps." .
+uplab:compileCpuTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "Sum over the compiler steps." .
+uplab:solveWallTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double .
+uplab:solveCpuTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double .
+uplab:firstPlanWallTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "Since the solving process started." .
+uplab:firstPlanCpuTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "Since the solving process started." .
+uplab:lastPlanWallTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double .
+uplab:lastPlanCpuTime a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double .
+
+# Run: problem and validation
+
+uplab:problemKind a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string ; rdfs:comment "One value per ProblemKind feature." .
+uplab:problemActions a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:problemFluents a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:problemObjects a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:validator a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string .
+uplab:plansValid a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:plansInvalid a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:plansUnvalidated a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:plansDistinctValid a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:bestCost a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "Lowest recomputed cost of a valid plan." .
+
+# Run: machine
+
+uplab:hostname a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string .
+uplab:cpuModel a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string .
+uplab:cpuCount a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer .
+uplab:machineMemoryMb a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double .
+uplab:os a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string .
+uplab:pythonVersion a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string .
+uplab:upVersion a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string .
+uplab:workerVersion a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:string .
+uplab:slurmJobId a owl:DatatypeProperty ; rdfs:domain uplab:Run .
+uplab:slurmArrayJobId a owl:DatatypeProperty ; rdfs:domain uplab:Run .
+uplab:slurmArrayTaskId a owl:DatatypeProperty ; rdfs:domain uplab:Run .
+
+# Metric
+
+uplab:metricSource a owl:DatatypeProperty ; rdfs:domain uplab:Metric ; rdfs:range xsd:string ; rdfs:comment "engine or parsed." .
+uplab:value a owl:DatatypeProperty ; rdfs:domain uplab:Metric ; rdfs:comment "Number, boolean or string." .
+
+# Task, BenchmarkSource, Planner, Variant, Request
+
+uplab:problem a owl:DatatypeProperty ; rdfs:domain uplab:Task ; rdfs:range xsd:string .
+uplab:format a owl:DatatypeProperty ; rdfs:domain uplab:Task ; rdfs:range xsd:string ; rdfs:comment "pddl, anml or python." .
+uplab:domainFile a owl:DatatypeProperty ; rdfs:domain uplab:Task ; rdfs:range xsd:string .
+uplab:problemFile a owl:DatatypeProperty ; rdfs:domain uplab:Task ; rdfs:range xsd:string .
+uplab:factory a owl:DatatypeProperty ; rdfs:domain uplab:Task ; rdfs:range xsd:string .
+uplab:tag a owl:DatatypeProperty ; rdfs:domain uplab:Task ; rdfs:range xsd:string .
+uplab:revision a owl:DatatypeProperty ; rdfs:domain uplab:BenchmarkSource ; rdfs:range xsd:string .
+uplab:requirement a owl:DatatypeProperty ; rdfs:domain uplab:Planner ; rdfs:range xsd:string .
+uplab:environmentHash a owl:DatatypeProperty ; rdfs:domain uplab:Planner ; rdfs:range xsd:string .
+uplab:compileOnly a owl:DatatypeProperty ; rdfs:domain uplab:Variant ; rdfs:range xsd:boolean .
+uplab:engine a owl:DatatypeProperty ; rdfs:domain uplab:Variant ; rdfs:range xsd:string ; rdfs:comment "One value per pipeline step." .
+uplab:pipeline a owl:DatatypeProperty ; rdfs:domain uplab:Variant ; rdfs:range xsd:string ; rdfs:comment "The pipeline as JSON." .
+uplab:mode a owl:DatatypeProperty ; rdfs:domain uplab:Request ; rdfs:range xsd:string ; rdfs:comment "oneshot, anytime or planset." .
+uplab:diversity a owl:DatatypeProperty ; rdfs:domain uplab:Request ; rdfs:range xsd:string ; rdfs:comment "Opaque JSON." .
+
+# Plan
+
+uplab:index a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:integer .
+uplab:file a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:string ; rdfs:comment "Relative to the run directory." .
+uplab:kind a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:string .
+uplab:foundWallTime a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:double .
+uplab:foundCpuTime a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:double .
+uplab:claimedCost a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:double .
+uplab:cost a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:double ; rdfs:comment "Recomputed from the quality metric of the problem." .
+uplab:length a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:integer .
+uplab:valid a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:boolean ; rdfs:comment "Absent when no validator applies." .
+uplab:duplicate a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:boolean .
+uplab:withinBound a owl:DatatypeProperty ; rdfs:domain uplab:Plan ; rdfs:range xsd:boolean .
+
+# Analysis reference-cost (on Task)
+
+uplab:effectiveReferenceCost a owl:DatatypeProperty ; rdfs:domain uplab:Task ; rdfs:range xsd:double ;
+    rdfs:comment "Manifest reference cost, else the best valid cost over the runs of the experiment." .
+uplab:referenceCostSource a owl:DatatypeProperty ; rdfs:domain uplab:Task ; rdfs:range xsd:string ; rdfs:comment "manifest or best-known." .
+
+# Analysis scores (on Run)
+
+uplab:coverage a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:integer ; rdfs:comment "1 if the outcome is SOLVED, else 0." .
+uplab:coverageUnvalidated a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:boolean ; rdfs:comment "Covered although no plan could be validated." .
+uplab:qualityScore a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "IPC satisficing score: reference cost / best cost." .
+uplab:agileScore a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "IPC-2018 agile score on the CPU time to the first plan." .
+uplab:par10 a owl:DatatypeProperty ; rdfs:domain uplab:Run ; rdfs:range xsd:double ; rdfs:comment "CPU time, or 10 x the time limit if not covered." .

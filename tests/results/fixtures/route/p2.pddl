@@ -1,0 +1,8 @@
+(define (problem p2)
+  (:domain route)
+  (:objects a b c - loc)
+  (:init (at a) (road a b) (road b c) (road a c)
+         (= (total-cost) 0)
+         (= (dist a b) 2) (= (dist b c) 2) (= (dist a c) 7))
+  (:goal (at c))
+  (:metric minimize (total-cost)))
