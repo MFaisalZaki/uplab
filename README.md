@@ -16,6 +16,9 @@ The schemas and module contracts are in
 
 ## Quick start
 
+`./setup.sh` does the installation below in one step (`--example` also runs
+the example experiment, `--help` lists the options).
+
 Requirements: Python >= 3.10 and `git`. [`uv`](https://docs.astral.sh/uv/)
 is optional.
 
