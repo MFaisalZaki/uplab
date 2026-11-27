@@ -81,3 +81,10 @@ def test_load_resolves_local_paths_and_round_trips(tmp_path: Path, bench: Path) 
 def test_unreadable_file(tmp_path: Path) -> None:
     with pytest.raises(UPLabError, match="cannot read"):
         load_config(tmp_path / "missing.yaml")
+
+
+@pytest.mark.parametrize("name, kind", [("local", "local"), ("slurm", "slurm")])
+def test_examples_are_valid(name: str, kind: str) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_config(root / "examples" / f"{name}.yaml")
+    assert config.executor.kind == kind and config.name == f"demo-{name}"

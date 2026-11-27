@@ -1,6 +1,10 @@
-# A tiny experiment: pyperplan on two domains with two problems each.
-#   uplab all examples/experiment.yaml
-name: demo
+# Local example: pyperplan on two domains with two problems each, run by a
+# process pool on this machine.
+#
+#   uplab all examples/local.yaml
+#
+# Results go to examples/experiments/demo-local.
+name: demo-local
 benchmarks:
   - name: tiny
     source: benchmarks            # local path, relative to this file

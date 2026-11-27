@@ -60,14 +60,15 @@ echo "up-lab is installed."
 
 if $example; then
     echo "Running the example experiment ..."
-    "$venv/bin/uplab" all "$here/examples/experiment.yaml"
-    echo "Results: $here/examples/experiments/demo/reports"
+    "$venv/bin/uplab" all "$here/examples/local.yaml"
+    echo "Results: $here/examples/experiments/demo-local/reports"
 fi
 
 cat <<MSG
 
 Next:
   source "$venv/bin/activate"
-  uplab all "$here/examples/experiment.yaml"     # local example
+  uplab all "$here/examples/local.yaml"       # local example
+  less "$here/examples/slurm.yaml"            # Slurm example: set partition/qos/account
   uplab --help
 MSG

@@ -1,0 +1,50 @@
+# Slurm example: the same experiment as local.yaml, run as job arrays with
+# one run per array index.
+#
+# Run these on the login node, from a directory the compute nodes can see:
+#
+#   uplab resolve examples/slurm.yaml    # needs internet: builds the planner environment
+#   uplab build   examples/slurm.yaml
+#   uplab run     examples/slurm.yaml    # queues one controller job and returns
+#   uplab status  examples/slurm.yaml
+#
+# The controller submits the arrays, refills the queue and runs `collect`
+# when every run has ended. Then:
+#
+#   uplab analyze examples/slurm.yaml
+#   uplab report  examples/slurm.yaml
+#
+# Results go to examples/experiments/demo-slurm; the controller's output and
+# the submission ledger are in its slurm/ directory.
+name: demo-slurm
+benchmarks:
+  - name: tiny
+    source: benchmarks
+planners:
+  - name: pyperplan
+    source: [up-pyperplan]
+variants:
+  - name: pyperplan
+    planner: pyperplan
+    engine: pyperplan
+requests:
+  - name: sat
+    mode: oneshot
+limits: {time: 60, memory_mb: 2048, cores: 1}
+executor:
+  kind: slurm
+  slurm:
+    # --- set these for your cluster -------------------------------------
+    # Many clusters refuse jobs without a partition, a QOS or an account.
+    # `sinfo -s` lists partitions; `sacctmgr show assoc user=$USER
+    # format=account,partition,qos` lists what you may use. Leave a value
+    # null to use the cluster's default.
+    partition: null               # e.g. compute
+    qos: null                     # e.g. normal
+    account: null                 # e.g. my-project
+    # ---------------------------------------------------------------------
+    array_parallelism: 20         # runs of one array executing at once (%N)
+    max_queued: null              # optional cap on queued runs
+    controller_time: 120          # minutes; must fit the partition's time limit
+    poll_interval: 30             # seconds between the controller's checks
+    extra: {}                     # any other sbatch option, e.g. {constraint: avx2}

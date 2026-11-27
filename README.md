@@ -24,7 +24,7 @@ is optional.
 
 ```sh
 uv sync                                   # installs up-lab, up-lab-worker, up-lab-stats
-uv run uplab all examples/experiment.yaml
+uv run uplab all examples/local.yaml
 ```
 
 Without `uv`:
@@ -32,16 +32,16 @@ Without `uv`:
 ```sh
 python3 -m venv .venv && . .venv/bin/activate
 pip install -e packages/up-lab-worker -e packages/up-lab -e packages/up-lab-stats
-uplab all examples/experiment.yaml
+uplab all examples/local.yaml
 ```
 
 Planner environments are built with `uv` when it is on `PATH`, and with the
 standard `venv` and `pip` otherwise. Only `uv` can fetch a Python version
 that is not installed (a planner's `python:` option).
 
-`examples/experiment.yaml` runs pyperplan on two small domains. `uplab all`
+`examples/local.yaml` runs pyperplan on two small domains. `uplab all`
 is the following steps, which can also be run one at a time; after `resolve`
-they accept the experiment directory (here `examples/experiments/demo`) in
+they accept the experiment directory (here `examples/experiments/demo-local`) in
 place of the YAML file.
 
 | Command | Effect |
@@ -61,7 +61,7 @@ The same steps are methods of `up_lab.experiment.Experiment`:
 ```python
 from up_lab.experiment import Experiment
 
-exp = Experiment("examples/experiment.yaml")
+exp = Experiment("examples/local.yaml")
 exp.resolve(); exp.build(); exp.run()
 print(exp.status())
 ```
@@ -125,11 +125,19 @@ tasks built by a Python function, is listed in a manifest
 
 ## Slurm
 
+`examples/slurm.yaml` is the local example with the Slurm executor; its
+header lists the commands to run. Set the partition, QOS and account your
+cluster requires (null uses the cluster's default):
+
 ```yaml
 executor:
   kind: slurm
-  slurm: {partition: cpu, array_parallelism: 100}
+  slurm: {partition: compute, qos: normal, account: my-project, array_parallelism: 20}
 ```
+
+Every job the experiment submits, the controller included, carries these
+options. The experiment directory, with the planner environments in it, must
+be on a filesystem the compute nodes can see.
 
 `uplab run` queues one small controller job and returns. The controller
 submits job arrays with one run per array index until everything is queued

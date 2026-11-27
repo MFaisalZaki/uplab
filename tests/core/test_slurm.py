@@ -1,6 +1,7 @@
 """The Slurm submitter against fake ``sbatch``/``squeue``/``scontrol``."""
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any, Callable, List, Tuple
@@ -263,3 +264,22 @@ def test_without_slurm(cluster: Any, monkeypatch: Any) -> None:
     monkeypatch.setenv("PATH", "/nonexistent")
     with pytest.raises(UPLabError, match="squeue"):
         run_slurm(exp_dir, config)
+
+
+def test_partition_qos_and_account_on_every_job(cluster: Any, controller: Any) -> None:
+    steps, collected = controller
+    options = {"partition": "cpu", "qos": "normal", "account": "proj"}
+    fake, exp_dir, config, ids = cluster(**options)
+
+    def arrays_end() -> None:
+        finish(exp_dir, ids)
+        fake.set("live", "")
+
+    steps.append(arrays_end)
+    run_slurm(exp_dir, config)  # as the controller: arrays 101 and 102
+    (exp_dir / "runs" / ids[0] / "result.json").unlink()
+    os.environ.pop("UPLAB_SLURM_CONTROLLER")
+    run_slurm(exp_dir, config)  # from the login node: controller job 103
+    assert fake.jobs() == [101, 102, 103]
+    for job in fake.jobs():
+        assert {name: fake.flag(job, name) for name in options} == options
