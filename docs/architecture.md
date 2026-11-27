@@ -53,6 +53,8 @@ uplab serve     SPARQL endpoint (Oxigraph server)
 
 ## Experiment directory
 
+Defaults to `experiments/<name>` next to the experiment YAML.
+
 ```
 <exp-dir>/
   experiment.yaml     resolved copy of the configuration
@@ -159,6 +161,9 @@ runs/<run-id>/
   record.jsonld    merged JSON-LD record written by collect; this is what the store loads
 ```
 
+`solve.json` (the solving process's checkpoint) and `driver.log` (local
+executor, only when a launcher failed) may also appear.
+
 A run is **done** iff `result.json` exists. `run_id` is the first 12 hex
 digits of sha1 over `task.id|variant.name|request.name|seed`.
 
@@ -235,6 +240,10 @@ already substituted.
 | `MEMOUT` | memory limit hit |
 | `UNSUPPORTED` | an engine does not support the problem kind |
 | `ERROR` | anything else; `error` holds the message |
+
+The engine is given the remaining time as its timeout; the driver kills the
+process group two seconds after the limit, so a planner that honours its
+timeout can still return its plans.
 
 Phase times are measured inside the solving process; `resources` are measured
 by the parent for the whole process tree. Unknown values are `null`, never

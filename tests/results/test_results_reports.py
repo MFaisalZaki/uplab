@@ -19,10 +19,17 @@ def test_default_reports(exp_copy: Path):
     written = report(exp_copy)
     names = sorted(p.name for p in written)
     assert names == [
-        "coverage.csv", "coverage.tex", "errors.csv", "runtimes.pdf",
-        "runtimes.png", "scores.csv", "scores.tex",
+        "coverage.csv",
+        "coverage.tex",
+        "errors.csv",
+        "runtimes.pdf",
+        "runtimes.png",
+        "scores.csv",
+        "scores.tex",
     ]
-    assert all(p.parent == exp_copy / "reports" and p.stat().st_size > 0 for p in written)
+    assert all(
+        p.parent == exp_copy / "reports" and p.stat().st_size > 0 for p in written
+    )
     coverage = pd.read_csv(exp_copy / "reports" / "coverage.csv")
     assert coverage.values.tolist()[-1] == ["good", "TOTAL", 4, 4]
     tex = (exp_copy / "reports" / "scores.tex").read_text()
@@ -42,21 +49,48 @@ def test_configured_reports(exp_copy: Path):
     pivot = {"index": "variant", "columns": "domain", "values": "solved"}
     config["reports"] = [
         {"name": "mine", "query": "mine.rq", "render": "csv"},
-        {"name": "pivot", "query": "builtin:coverage", "render": "latex", "options": {"pivot": pivot}},
-        {"name": "vs", "query": "builtin:runtimes", "render": "scatter",
-         "options": {"x": "good", "y": "bad", "value": "cpu_time"}},
-        {"name": "bars", "query": "builtin:coverage", "render": "bar",
-         "options": {"x": "domain", "y": "solved", "hue": "variant"}},
-        {"name": "lines", "query": "builtin:anytime", "render": "line",
-         "options": {"x": "cpu_time", "y": "cost", "hue": "variant"}},
+        {
+            "name": "pivot",
+            "query": "builtin:coverage",
+            "render": "latex",
+            "options": {"pivot": pivot},
+        },
+        {
+            "name": "vs",
+            "query": "builtin:runtimes",
+            "render": "scatter",
+            "options": {"x": "good", "y": "bad", "value": "cpu_time"},
+        },
+        {
+            "name": "bars",
+            "query": "builtin:coverage",
+            "render": "bar",
+            "options": {"x": "domain", "y": "solved", "hue": "variant"},
+        },
+        {
+            "name": "lines",
+            "query": "builtin:anytime",
+            "render": "line",
+            "options": {"x": "cpu_time", "y": "cost", "hue": "variant"},
+        },
     ]
     (exp_copy / "experiment.yaml").write_text(yaml.safe_dump(config))
     written = {p.name for p in report(exp_copy)}
     assert written == {
-        "mine.csv", "pivot.tex", "vs.pdf", "vs.png", "bars.pdf", "bars.png",
-        "lines.pdf", "lines.png",
+        "mine.csv",
+        "pivot.tex",
+        "vs.pdf",
+        "vs.png",
+        "bars.pdf",
+        "bars.png",
+        "lines.pdf",
+        "lines.png",
     }
-    assert (exp_copy / "reports" / "mine.csv").read_text().split() == ["variant,runs", "bad,4", "good,4"]
+    assert (exp_copy / "reports" / "mine.csv").read_text().split() == [
+        "variant,runs",
+        "bad,4",
+        "good,4",
+    ]
     tex = (exp_copy / "reports" / "pivot.tex").read_text()
     assert "TOTAL & plain & route" in tex and "good & 4 & 1 & 3" in tex
 
@@ -91,11 +125,17 @@ def test_serve_command(exp: Path, tmp_path: Path, monkeypatch):
     command = serve_command(exp, "0.0.0.0", 9999)
     assert Path(command[0]).name == "oxigraph"
     assert command[1:] == [
-        "serve-read-only", "--location", str(exp / "store"),
-        "--bind", "0.0.0.0:9999", "--union-default-graph",
+        "serve-read-only",
+        "--location",
+        str(exp / "store"),
+        "--bind",
+        "0.0.0.0:9999",
+        "--union-default-graph",
     ]
     called = []
-    monkeypatch.setattr(serve_module.os, "execv", lambda path, argv: called.append(argv))
+    monkeypatch.setattr(
+        serve_module.os, "execv", lambda path, argv: called.append(argv)
+    )
     serve_module.serve(exp)
     assert called[0][-3:] == ["--bind", "localhost:7878", "--union-default-graph"]
     with pytest.raises(UPLabError):

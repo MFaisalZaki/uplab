@@ -12,8 +12,20 @@ import yaml
 FIXTURES = Path(__file__).parent / "fixtures"
 LONG, SHORT, BAD = "move(a, b)\nmove(b, c)\n", "move(a, c)\n", "move(b, c)\n"
 REQUESTS = {
-    "sat": {"name": "sat", "mode": "oneshot", "k": 1, "quality_bound": None, "diversity": None},
-    "set": {"name": "set", "mode": "planset", "k": 3, "quality_bound": 2.0, "diversity": None},
+    "sat": {
+        "name": "sat",
+        "mode": "oneshot",
+        "k": 1,
+        "quality_bound": None,
+        "diversity": None,
+    },
+    "set": {
+        "name": "set",
+        "mode": "planset",
+        "k": 3,
+        "quality_bound": 2.0,
+        "diversity": None,
+    },
 }
 # task id -> manifest reference cost
 TASKS = {"local/route/p1": 2, "local/route/p2": None, "local/plain/q1": None}
@@ -66,7 +78,9 @@ def write_run(
             "name": variant,
             "planner": "pyperplan",
             "compile_only": False,
-            "pipeline": [{"engine": "pyperplan", "params": {}, "compilation_kind": None}],
+            "pipeline": [
+                {"engine": "pyperplan", "params": {}, "compilation_kind": None}
+            ],
         },
         "request": REQUESTS[request],
         "limits": {"time": 100, "memory_mb": 2048, "cores": 1},
@@ -98,22 +112,45 @@ def write_run(
             "first_plan": found,
             "last_plan": last,
         },
-        "problem": {"kind": ["ACTION_BASED", "FLAT_TYPING"], "actions": 1, "fluents": 2, "objects": 3},
-        "plans": {"count": len(plans), "claimed_optimal": False, "claimed_complete": None},
+        "problem": {
+            "kind": ["ACTION_BASED", "FLAT_TYPING"],
+            "actions": 1,
+            "fluents": 2,
+            "objects": 3,
+        },
+        "plans": {
+            "count": len(plans),
+            "claimed_optimal": False,
+            "claimed_complete": None,
+        },
         "engine": {"name": "pyperplan", "metrics": metrics or {}, "log_messages": []},
         "machine": {
-            "hostname": "n01", "cpu_model": "cpu", "cpu_count": 8, "memory_mb": 32000,
-            "os": "Linux-6.1", "python": "3.12.3", "unified_planning": "1.3.0",
-            "up_lab_worker": "0.1.0", "slurm_job_id": None,
-            "slurm_array_job_id": None, "slurm_array_task_id": None,
+            "hostname": "n01",
+            "cpu_model": "cpu",
+            "cpu_count": 8,
+            "memory_mb": 32000,
+            "os": "Linux-6.1",
+            "python": "3.12.3",
+            "unified_planning": "1.3.0",
+            "up_lab_worker": "0.1.0",
+            "slurm_job_id": None,
+            "slurm_array_job_id": None,
+            "slurm_array_task_id": None,
         },
     }
     lines = []
     for index, (text, time) in enumerate(zip(plans, times), start=1):
         name = f"plans/{index:05d}.plan"
         (run_dir / name).write_text(text)
-        entry = {"index": index, "file": name, "wall_time": time, "cpu_time": time,
-                 "claimed_cost": None, "length": len(text.splitlines()), "kind": "SEQUENTIAL_PLAN"}
+        entry = {
+            "index": index,
+            "file": name,
+            "wall_time": time,
+            "cpu_time": time,
+            "claimed_cost": None,
+            "length": len(text.splitlines()),
+            "kind": "SEQUENTIAL_PLAN",
+        }
         lines.append(json.dumps(entry))
     (run_dir / "run.json").write_text(json.dumps(run, indent=2))
     (run_dir / "result.json").write_text(json.dumps(result, indent=2))
@@ -123,14 +160,20 @@ def write_run(
     return run_dir
 
 
-def write_experiment(exp_dir: Path, reports: Optional[List[Dict[str, Any]]] = None) -> Path:
+def write_experiment(
+    exp_dir: Path, reports: Optional[List[Dict[str, Any]]] = None
+) -> Path:
     """Writes experiment.yaml and the eight runs of the fixture experiment."""
     config = {
         "name": "demo",
         "benchmarks": [{"name": "local", "source": str(FIXTURES)}],
         "planners": [{"name": "pyperplan", "source": ["up-pyperplan"]}],
         "variants": [
-            {"name": name, "planner": "pyperplan", "pipeline": [{"engine": "pyperplan"}]}
+            {
+                "name": name,
+                "planner": "pyperplan",
+                "pipeline": [{"engine": "pyperplan"}],
+            }
             for name in ("good", "bad")
         ],
         "requests": list(REQUESTS.values()),
@@ -143,9 +186,13 @@ def write_experiment(exp_dir: Path, reports: Optional[List[Dict[str, Any]]] = No
     (exp_dir / "experiment.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
     (exp_dir / "fast.rq").write_text(FAST_RQ)
     p1, p2, q1 = TASKS
-    write_run(exp_dir, p1, "good", plans=[LONG], cpu=0.5, first=0.4, metrics={"expanded": "7"})
+    write_run(
+        exp_dir, p1, "good", plans=[LONG], cpu=0.5, first=0.4, metrics={"expanded": "7"}
+    )
     write_run(exp_dir, p1, "bad", plans=[SHORT], cpu=12.0, first=10.0)
-    write_run(exp_dir, p1, "good", "set", plans=[LONG, SHORT, LONG], cpu=0.75, first=0.2)
+    write_run(
+        exp_dir, p1, "good", "set", plans=[LONG, SHORT, LONG], cpu=0.75, first=0.2
+    )
     write_run(exp_dir, p1, "bad", "set", status="TIMEOUT", cpu=100.0)
     write_run(exp_dir, p2, "good", plans=[LONG], cpu=12.0, first=10.0)
     write_run(exp_dir, p2, "bad", plans=[BAD], cpu=3.0)

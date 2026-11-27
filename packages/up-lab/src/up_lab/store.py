@@ -42,7 +42,7 @@ def graph_iri(experiment: str, analysis: Optional[str] = None) -> ox.NamedNode:
     return ox.NamedNode(f"urn:uplab:graph:{experiment}{suffix}")
 
 
-def open_store(exp_dir: Path, read_only: bool = False) -> ox.Store:
+def open_store(exp_dir: Union[str, Path], read_only: bool = False) -> ox.Store:
     """
     Opens the on-disk store of an experiment.
 

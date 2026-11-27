@@ -29,10 +29,19 @@ def test_collect_writes_records(exp: Path):
 def test_counts(exp: Path):
     count = "SELECT (COUNT(DISTINCT ?x) AS ?n) WHERE { ?x a %s }"
     expected = {
-        "uplab:Experiment": 1, "uplab:Run": 8, "prov:Activity": 8, "uplab:Task": 3,
-        "uplab:Domain": 2, "uplab:BenchmarkSource": 1, "uplab:Planner": 1,
-        "uplab:Variant": 2, "prov:SoftwareAgent": 2, "uplab:Request": 2,
-        "uplab:Plan": 8, "prov:Entity": 8, "uplab:Metric": 1,
+        "uplab:Experiment": 1,
+        "uplab:Run": 8,
+        "prov:Activity": 8,
+        "uplab:Task": 3,
+        "uplab:Domain": 2,
+        "uplab:BenchmarkSource": 1,
+        "uplab:Planner": 1,
+        "uplab:Variant": 2,
+        "prov:SoftwareAgent": 2,
+        "uplab:Request": 2,
+        "uplab:Plan": 8,
+        "prov:Entity": 8,
+        "uplab:Metric": 1,
     }
     assert {c: one(exp, count % c) for c in expected} == expected
     # no duplicated run: every run has exactly one status
@@ -47,7 +56,10 @@ def test_records_are_in_the_experiment_graph(exp: Path):
         "urn:uplab:graph:demo:analysis:reference-cost",
         "urn:uplab:graph:demo:analysis:scores",
     ]
-    n = one(exp, "SELECT (COUNT(*) AS ?n) WHERE { GRAPH <urn:uplab:graph:demo> { ?r a uplab:Run } }")
+    n = one(
+        exp,
+        "SELECT (COUNT(*) AS ?n) WHERE { GRAPH <urn:uplab:graph:demo> { ?r a uplab:Run } }",
+    )
     assert n == 8
 
 
@@ -73,13 +85,34 @@ def test_typed_values(exp: Path):
     run = row.pop("run")
     assert len(run) == 12
     assert row == {
-        "status": "SOLVED", "outcome": "SOLVED", "seed": 0, "k": 3, "bound": 2.0,
-        "cpu": 0.75, "wall": 1.0, "mem": 91.5, "parse": 0.125, "first": 0.2,
-        "limit": 100.0, "valid": 3, "distinct": 2, "best": 2.0, "ref": 2.0,
-        "host": "n01", "optimal": False, "started": "2026-11-27T10:00:00Z",
+        "status": "SOLVED",
+        "outcome": "SOLVED",
+        "seed": 0,
+        "k": 3,
+        "bound": 2.0,
+        "cpu": 0.75,
+        "wall": 1.0,
+        "mem": 91.5,
+        "parse": 0.125,
+        "first": 0.2,
+        "limit": 100.0,
+        "valid": 3,
+        "distinct": 2,
+        "best": 2.0,
+        "ref": 2.0,
+        "host": "n01",
+        "optimal": False,
+        "started": "2026-11-27T10:00:00Z",
         "task": "urn:uplab:task:demo:local/route/p1",
     }
-    for key, kind in {"seed": int, "k": int, "valid": int, "cpu": float, "best": float, "optimal": bool}.items():
+    for key, kind in {
+        "seed": int,
+        "k": int,
+        "valid": int,
+        "cpu": float,
+        "best": float,
+        "optimal": bool,
+    }.items():
         assert type(df[key].tolist()[0]) is kind, key
     datatype = """SELECT (DATATYPE(?v) AS ?t) WHERE {
         ?r uplab:%s ?v ; uplab:variant/uplab:name "good" ; uplab:request/uplab:name "set" }"""
@@ -131,12 +164,17 @@ def test_plan_nodes(exp: Path):
 
 
 def test_metric_nodes(exp: Path):
-    df = query(exp, "SELECT ?name ?source ?value WHERE { ?r uplab:metric ?m . ?m uplab:name ?name ; uplab:metricSource ?source ; uplab:value ?value }")
+    df = query(
+        exp,
+        "SELECT ?name ?source ?value WHERE { ?r uplab:metric ?m . ?m uplab:name ?name ; uplab:metricSource ?source ; uplab:value ?value }",
+    )
     assert df.values.tolist() == [["expanded", "engine", 7]]
 
 
 def test_prefix_header_and_explicit_prefixes(exp: Path):
-    explicit = "PREFIX uplab: <urn:uplab:ns#> SELECT (COUNT(*) AS ?n) WHERE { ?r a uplab:Run }"
+    explicit = (
+        "PREFIX uplab: <urn:uplab:ns#> SELECT (COUNT(*) AS ?n) WHERE { ?r a uplab:Run }"
+    )
     assert one(exp, explicit) == 8
     with pytest.raises(UPLabError):
         query(exp, "SELECT nonsense")

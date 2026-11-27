@@ -33,14 +33,14 @@ def _(exp_dir, mo):
     return
 '''
 
-_TABLE = '''
+_TABLE = """
 
 @app.cell
 def _(load_query, mo, query, store):
     {name} = query(store, load_query("builtin:{name}"))
     mo.vstack([mo.md("## {title}"), mo.ui.table({name}, selection=None)])
     return ({name},)
-'''
+"""
 
 _FOOTER = '''
 

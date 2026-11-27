@@ -77,7 +77,8 @@ def scores(
     """
     Per-run scores; needs the graph of the `reference-cost` analysis.
 
-    - `uplab:coverage`: 1 if the outcome is `SOLVED`, else 0; with
+    - `uplab:coverage`: 1 if the outcome is `SOLVED`, or `TIMEOUT` with at
+      least one valid plan (anytime and plan-set runs), else 0; with
       `uplab:coverageUnvalidated true` when no plan could be validated.
     - `uplab:qualityScore`: IPC satisficing score, reference cost / best
       valid cost (at most 1), 0 if not covered, absent if a cost is unknown.
@@ -103,7 +104,9 @@ def scores(
         }"""
     for row in _rows(store, sparql):
         run, limit = row["run"], row["limit"]
-        covered = row["outcome"] == "SOLVED"
+        covered = row["outcome"] == "SOLVED" or (
+            row["outcome"] == "TIMEOUT" and bool(row["valid"])
+        )
         yield triple(run, "coverage", int(covered))
         if covered and not row["valid"]:
             yield triple(run, "coverageUnvalidated", True)
@@ -184,8 +187,12 @@ def figure(kind: str, df: pd.DataFrame, options: Dict[str, Any]) -> Any:
 
     styles = ["-", "--", ":", "-."]
     cycle = cycler(linestyle=styles) * cycler(color=PALETTE)
-    rc = {"axes.prop_cycle": cycle, "lines.linewidth": 2, "grid.linewidth": 0.5}
-    with sns.axes_style("whitegrid", rc=rc):
+    rc: Dict[Any, Any] = {
+        "axes.prop_cycle": cycle,
+        "lines.linewidth": 2,
+        "grid.linewidth": 0.5,
+    }
+    with sns.axes_style("whitegrid"), plt.rc_context(rc):
         fig, ax = plt.subplots(figsize=options.get("figsize", (6, 4)))
         _DRAW[kind](ax, df, options)
         sns.despine(fig)
@@ -202,7 +209,9 @@ def _cactus(ax: Any, df: pd.DataFrame, options: Dict[str, Any]) -> None:
         df = df[df["outcome"] == "SOLVED"]
     for name, part in df.dropna(subset=[time]).groupby(group):
         times = sorted(part[time])
-        ax.step(times, range(1, len(times) + 1), where="post", label=str(name))
+        counts = range(len(times) + 1)
+        ax.step(times[:1] + times, counts, where="post", label=str(name))
+    ax.yaxis.get_major_locator().set_params(integer=True)
     ax.set_xscale(options.get("xscale", "log"))
     ax.set_xlabel(options.get("xlabel", f"{time} (s)"))
     ax.set_ylabel(options.get("ylabel", "solved runs"))
@@ -223,6 +232,9 @@ def _scatter(ax: Any, df: pd.DataFrame, options: Dict[str, Any]) -> None:
         raise UPLabError(f"No {value} for {missing}; found {list(wide.columns)}")
     wide = wide[[x, y]].dropna()
     ax.scatter(wide[x], wide[y], s=36, color=PALETTE[0], edgecolor="white")
+    if len(wide):
+        low, high = wide.min().min() / 2, wide.max().max() * 2
+        ax.set(xlim=(low, high), ylim=(low, high), aspect="equal")
     ax.axline((1, 1), slope=1, color="#666666", linewidth=1, linestyle="--")
     ax.set_xscale(options.get("scale", "log"))
     ax.set_yscale(options.get("scale", "log"))
@@ -230,7 +242,9 @@ def _scatter(ax: Any, df: pd.DataFrame, options: Dict[str, Any]) -> None:
     ax.set_ylabel(f"{y}: {value}")
 
 
-def _seaborn(plot: str) -> Callable[[Any, pd.DataFrame, Dict[str, Any]], None]:
+def _seaborn(
+    plot: str, **style: Any
+) -> Callable[[Any, pd.DataFrame, Dict[str, Any]], None]:
     def draw(ax: Any, df: pd.DataFrame, options: Dict[str, Any]) -> None:
         import seaborn as sns
 
@@ -240,7 +254,7 @@ def _seaborn(plot: str) -> Callable[[Any, pd.DataFrame, Dict[str, Any]], None]:
         palette = (PALETTE * df[hue].nunique())[: df[hue].nunique()] if hue else None
         color = None if hue else PALETTE[0]
         getattr(sns, plot)(
-            data=df, x=x, y=y, hue=hue, palette=palette, color=color, ax=ax
+            data=df, x=x, y=y, hue=hue, palette=palette, color=color, ax=ax, **style
         )
         if plot == "barplot":
             ax.tick_params(axis="x", rotation=options.get("rotation", 0))
@@ -253,8 +267,8 @@ def _seaborn(plot: str) -> Callable[[Any, pd.DataFrame, Dict[str, Any]], None]:
 _DRAW = {
     "cactus": _cactus,
     "scatter": _scatter,
-    "bar": _seaborn("barplot"),
-    "line": _seaborn("lineplot"),
+    "bar": _seaborn("barplot", saturation=1, errorbar=None),
+    "line": _seaborn("lineplot", estimator=None, marker="o"),
 }
 
 

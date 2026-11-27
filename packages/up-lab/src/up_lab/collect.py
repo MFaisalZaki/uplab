@@ -231,9 +231,11 @@ def build_record(run_dir: Path, context: Dict[str, Any]) -> Dict[str, Any]:
             "mode": request["mode"],
             "k": request["k"],
             "qualityBound": request["quality_bound"],
-            "diversity": None
-            if request["diversity"] is None
-            else json.dumps(request["diversity"], sort_keys=True),
+            "diversity": (
+                None
+                if request["diversity"] is None
+                else json.dumps(request["diversity"], sort_keys=True)
+            ),
         },
     ]
     for plan in validation["plans"]:
@@ -253,8 +255,7 @@ def build_record(run_dir: Path, context: Dict[str, Any]) -> Dict[str, Any]:
                 "length": plan["length"],
                 "valid": plan["valid"],
                 "duplicate": duplicate_of is not None,
-                "duplicateOf": duplicate_of
-                and iri("plan", exp, run_id, duplicate_of),
+                "duplicateOf": duplicate_of and iri("plan", exp, run_id, duplicate_of),
                 "withinBound": plan["within_bound"],
             }
         )

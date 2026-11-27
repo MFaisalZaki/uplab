@@ -107,8 +107,16 @@ def test_builtin_scores(exp: Path):
 def test_builtin_runtimes(exp: Path):
     df = query(exp, load_query("builtin:runtimes"))
     assert list(df.columns) == [
-        "run", "variant", "task", "domain", "request", "seed", "outcome",
-        "cpu_time", "wall_time", "first_plan_cpu_time",
+        "run",
+        "variant",
+        "task",
+        "domain",
+        "request",
+        "seed",
+        "outcome",
+        "cpu_time",
+        "wall_time",
+        "first_plan_cpu_time",
     ]
     assert len(df) == 8 and df["run"].is_unique
     got = df[["variant", "task", "request", "outcome", "cpu_time", "wall_time"]]
@@ -136,8 +144,15 @@ def test_builtin_errors(exp: Path):
 def test_builtin_plansets(exp: Path):
     df = query(exp, load_query("builtin:plansets")).drop(columns="run")
     assert list(df.columns) == [
-        "variant", "task", "request", "k", "outcome", "returned", "valid",
-        "distinct_valid", "best_cost",
+        "variant",
+        "task",
+        "request",
+        "k",
+        "outcome",
+        "returned",
+        "valid",
+        "distinct_valid",
+        "best_cost",
     ]
     assert df.astype(object).where(df.notna(), None).values.tolist() == [
         ["bad", "local/plain/q1", "sat", 1, "ERROR", 0, 0, 0, None],

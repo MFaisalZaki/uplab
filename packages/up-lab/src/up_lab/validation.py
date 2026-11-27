@@ -170,7 +170,9 @@ def validate_run(run_dir: Union[str, Path]) -> Dict[str, Any]:
                 "valid": valid,
                 "cost": cost,
                 "length": length,
-                "duplicate_of": None if duplicate_of == entry["index"] else duplicate_of,
+                "duplicate_of": (
+                    None if duplicate_of == entry["index"] else duplicate_of
+                ),
                 "within_bound": within,
             }
         )
