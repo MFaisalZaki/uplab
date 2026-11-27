@@ -16,12 +16,25 @@ The schemas and module contracts are in
 
 ## Quick start
 
-Requirements: Python >= 3.10, [`uv`](https://docs.astral.sh/uv/) and `git`.
+Requirements: Python >= 3.10 and `git`. [`uv`](https://docs.astral.sh/uv/)
+is optional.
 
 ```sh
 uv sync                                   # installs up-lab, up-lab-worker, up-lab-stats
 uv run uplab all examples/experiment.yaml
 ```
+
+Without `uv`:
+
+```sh
+python3 -m venv .venv && . .venv/bin/activate
+pip install -e packages/up-lab-worker -e packages/up-lab -e packages/up-lab-stats
+uplab all examples/experiment.yaml
+```
+
+Planner environments are built with `uv` when it is on `PATH`, and with the
+standard `venv` and `pip` otherwise. Only `uv` can fetch a Python version
+that is not installed (a planner's `python:` option).
 
 `examples/experiment.yaml` runs pyperplan on two small domains. `uplab all`
 is the following steps, which can also be run one at a time; after `resolve`

@@ -1,9 +1,13 @@
-"""Planner environments: one uv virtual environment per planner."""
+"""
+Planner environments: one virtual environment per planner, built with uv
+when it is installed and with the standard `venv` and `pip` otherwise.
+"""
 
 import hashlib
 import json
 import shutil
 import subprocess
+import sys
 from importlib import metadata
 from pathlib import Path
 from typing import Any, Dict, List
@@ -39,13 +43,48 @@ def worker_requirement() -> List[str]:
     return [f"{WORKER}=={dist.version}"]
 
 
-def _uv(*args: str) -> str:
+def _run(*command: str) -> str:
     try:
-        done = subprocess.run(["uv", *args], check=True, capture_output=True, text=True)
+        done = subprocess.run(command, check=True, capture_output=True, text=True)
     except (OSError, subprocess.CalledProcessError) as error:
         detail = getattr(error, "stderr", None) or str(error)
-        raise UPLabError(f"uv {' '.join(args)} failed:\n{detail.strip()}") from error
+        raise UPLabError(f"{' '.join(command)} failed:\n{detail.strip()}") from error
     return done.stdout
+
+
+def _uv(*args: str) -> str:
+    return _run("uv", *args)
+
+
+def _install(planner: PlannerConfig, env_dir: Path, requirements: List[str]) -> str:
+    """
+    Creates the environment and installs the requirements into it.
+
+    :param planner: the planner; `python` selects the interpreter version.
+    :param env_dir: where the environment goes.
+    :param requirements: what to install.
+    :return: the output of `pip freeze` in the new environment.
+    """
+    python = str(env_dir / "bin" / "python")
+    if shutil.which("uv"):
+        version = ["--python", planner.python] if planner.python else []
+        _uv("venv", *version, str(env_dir))
+        _uv("pip", "install", "--python", python, *requirements)
+        return _uv("pip", "freeze", "--python", python)
+    base = sys.executable
+    if planner.python:
+        found = shutil.which(f"python{planner.python}")
+        if found is None:
+            raise UPLabError(
+                f"planner '{planner.name}' asks for Python {planner.python}: "
+                f"python{planner.python} is not on PATH (uv, when installed, "
+                "can download it)"
+            )
+        base = found
+    _run(base, "-m", "venv", str(env_dir))
+    _run(python, "-m", "pip", "install", "--upgrade", "pip")
+    _run(python, "-m", "pip", "install", *requirements)
+    return _run(python, "-m", "pip", "freeze", "--all")
 
 
 def _packages(freeze: str) -> Dict[str, str]:
@@ -84,10 +123,7 @@ def build_env(planner: PlannerConfig, exp_dir: Path, force: bool = False) -> Dic
     if env_dir.exists():
         shutil.rmtree(env_dir)
     env_dir.parent.mkdir(parents=True, exist_ok=True)
-    version = ["--python", planner.python] if planner.python else []
-    _uv("venv", *version, str(env_dir))
-    _uv("pip", "install", "--python", str(python), *planner.source, *worker)
-    freeze = _uv("pip", "freeze", "--python", str(python))
+    freeze = _install(planner, env_dir, [*planner.source, *worker])
     entry = {
         "python": str(python),
         "source": planner.source,

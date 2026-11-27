@@ -99,7 +99,13 @@ def test_build_env_commands_and_reuse(tmp_path: Path, monkeypatch: Any) -> None:
     reason="builds a real uv environment (needs a package index); "
     "set UPLAB_NETWORK_TESTS=1",
 )
-def test_build_real_env(tmp_path: Path) -> None:
+@pytest.mark.parametrize("with_uv", [True, False])
+def test_build_real_env(tmp_path: Path, monkeypatch: Any, with_uv: bool) -> None:
+    if not with_uv:  # the standard venv + pip path
+        which = envs.shutil.which
+        monkeypatch.setattr(
+            envs.shutil, "which", lambda name: None if name == "uv" else which(name)
+        )
     entry = envs.build_env(PlannerConfig(name="pp", source=["up-pyperplan"]), tmp_path)
     assert "up-pyperplan" in entry["packages"]
     code = "import up_lab_worker, up_pyperplan"

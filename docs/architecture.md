@@ -11,8 +11,8 @@ schema.
 
 1. **Files are the source of truth.** A run writes only into its own
    directory. The RDF store, tables and figures are derived and rebuildable.
-2. **Planners are isolated.** Each planner lives in its own `uv` virtual
-   environment; a run is a subprocess of that environment's Python.
+2. **Planners are isolated.** Each planner lives in its own virtual
+   environment (built with `uv`, or `venv` + `pip` when `uv` is absent); a run is a subprocess of that environment's Python.
 3. **Planners cannot certify themselves.** Costs and validity are recomputed
    by `collect`, outside the planner's process.
 4. **Little code, maintained libraries.** Glue only; no speculative
