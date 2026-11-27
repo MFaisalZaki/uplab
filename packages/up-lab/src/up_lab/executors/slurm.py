@@ -132,6 +132,7 @@ def _submit_arrays(
             mem=f"{limits.memory_mb + slurm.memory_headroom_mb}M",
             cpus_per_task=limits.cores,
             array_parallelism=slurm.array_parallelism,
+            use_srun=False,  # one task per element; srun adds nothing
         )
         launchers = [str(exp_dir / "runs" / run_id / "run.sh") for run_id in chunk]
         try:
@@ -198,6 +199,11 @@ def control(exp_dir: Path, config: ExperimentConfig) -> None:
     budget = slurm.controller_time * 60
     margin = min(max(300, 2 * slurm.poll_interval), budget / 2)
     in_job = "SLURM_JOB_ID" in os.environ
+    # Jobs submitted from inside a job inherit its environment; the
+    # controller's own SLURM_* settings (e.g. SLURM_MEM_PER_CPU) would
+    # conflict with the options of the arrays.
+    for name in [n for n in os.environ if n.startswith(("SLURM_", "SBATCH_"))]:
+        del os.environ[name]
     deadline = time.monotonic() + budget - margin
     while True:
         try:

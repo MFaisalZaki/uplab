@@ -250,8 +250,13 @@ def test_controller_resubmits_itself_before_its_time_limit(
     steps, collected = controller
     fake, exp_dir, config, ids = cluster(controller_time=20, poll_interval=600)
     monkeypatch.setenv("SLURM_JOB_ID", "100")
+    monkeypatch.setenv("SLURM_MEM_PER_CPU", "4000")
     steps.append(lambda: None)  # one sleep of 600 s reaches the deadline
     run_slurm(exp_dir, config)
+
+    # The controller's own Slurm settings must not reach the jobs it submits.
+    assert not [n for n in os.environ if n.startswith("SLURM_")]
+    assert "srun" not in fake.script(101) and "srun" not in fake.script(102)
 
     assert fake.jobs() == [101, 102, 103] and collected == []
     command = fake.submission("103").function.command
